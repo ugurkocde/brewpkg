@@ -1,0 +1,218 @@
+//
+//  ContentView.swift
+//  brewpkg
+//
+//  Created by Ugur Koc on 8/23/25.
+//
+
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct ContentView: View {
+    @State private var inputURL: URL?
+    @State private var fileInfo: FileInfo?
+    @State private var configuration = PackageConfiguration()
+    @StateObject private var buildEngine = BuildEngine()
+    @State private var showingSavePanel = false
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
+    @State private var outputPackageURL: URL?
+    @State private var isValidIdentifier = true
+    
+    var canBuild: Bool {
+        if case .building = buildEngine.state {
+            return false
+        }
+        return inputURL != nil && configuration.isValid
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: Spacing.lg) {
+                // Header
+                HeaderView()
+                    .padding(.top, Spacing.md)
+            
+                // Drop Zone
+                DropZoneView(inputURL: $inputURL, fileInfo: $fileInfo)
+                .onChange(of: fileInfo) { info in
+                    if let info = info {
+                        // Pre-fill defaults
+                        if configuration.identifier.isEmpty {
+                            configuration.identifier = info.suggestedIdentifier
+                        }
+                        if let version = info.version, configuration.version == "1.0" {
+                            configuration.version = version
+                        }
+                    }
+                }
+                    .padding(.horizontal, Spacing.md)
+            
+                // Configuration - replaced with inline form
+                // ConfigurationView(configuration: $configuration)
+            
+            // Template Manager
+            TemplateManagerView(configuration: $configuration)
+                .padding(.horizontal)
+            
+            // Build Controls
+            VStack(spacing: 12) {
+                HStack(spacing: 16) {
+                    if case .building = buildEngine.state {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Building...")
+                                .foregroundColor(.secondary)
+                            ProgressView(value: buildEngine.progress)
+                                .progressViewStyle(.linear)
+                                .frame(width: 150)
+                            Text("\(Int(buildEngine.progress * 100))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .monospacedDigit()
+                        }
+                        
+                        Button("Cancel") {
+                            buildEngine.cancel()
+                        }
+                        .buttonStyle(.bordered)
+                    } else {
+                        Button("Build Package") {
+                            buildPackage()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!canBuild)
+                        .keyboardShortcut(.return, modifiers: .command)
+                        
+                        if case .completed = buildEngine.state {
+                            Label("Build Successful", systemImage: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        } else if case .failed(let error) = buildEngine.state {
+                            Label("Build Failed", systemImage: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                                .help(error.localizedDescription)
+                        }
+                    }
+                }
+                
+                // Output package link
+                if let outputPackageURL = outputPackageURL, case .completed = buildEngine.state {
+                    HStack {
+                        Image(systemName: "shippingbox.fill")
+                            .foregroundColor(.green)
+                        Button(outputPackageURL.lastPathComponent) {
+                            NSWorkspace.shared.selectFile(
+                                outputPackageURL.path,
+                                inFileViewerRootedAtPath: outputPackageURL.deletingLastPathComponent().path
+                            )
+                        }
+                        .buttonStyle(.link)
+                        .help("Reveal in Finder")
+                        
+                        Button(action: {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(outputPackageURL.path, forType: .string)
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Copy path to clipboard")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(8)
+                }
+            }
+            .padding(.horizontal)
+            
+            // Log View
+            LogView(logOutput: buildEngine.logOutput)
+                .padding(.horizontal)
+            
+            // Validation Hints
+            if inputURL != nil {
+                VStack(spacing: 8) {
+                    // Identifier validation
+                    if !configuration.identifier.isEmpty && !configuration.identifier.contains(".") {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundColor(.orange)
+                            Text("Identifier should use reverse domain notation (e.g., com.company.app)")
+                                .font(.caption)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                    
+                    // Other validation errors
+                    ForEach(configuration.validationErrors.filter { !$0.contains("reverse domain") }, id: \.self) { error in
+                        HStack {
+                            Image(systemName: "exclamationmark.circle")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.caption)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            
+            }
+            .padding(.bottom, Spacing.xl)
+        }
+        .frame(minWidth: 720, idealWidth: 800, maxWidth: .infinity, minHeight: 750, idealHeight: 850, maxHeight: .infinity)
+        .background(Color.windowBackground)
+        .alert("Build Error", isPresented: $showingAlert) {
+            Button("OK") { }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+    
+    private func buildPackage() {
+        guard let inputURL = inputURL else { return }
+        
+        let savePanel = NSSavePanel()
+        savePanel.title = "Save Package As"
+        savePanel.allowedContentTypes = [UTType(filenameExtension: "pkg") ?? .data]
+        savePanel.nameFieldStringValue = "\(inputURL.deletingPathExtension().lastPathComponent).pkg"
+        savePanel.canCreateDirectories = true
+        
+        if savePanel.runModal() == .OK, let outputURL = savePanel.url {
+            Task {
+                do {
+                    try await buildEngine.build(
+                        configuration: configuration,
+                        inputURL: inputURL,
+                        outputURL: outputURL
+                    )
+                    
+                    // Store output URL for display
+                    await MainActor.run {
+                        self.outputPackageURL = outputURL
+                    }
+                } catch {
+                    await MainActor.run {
+                        alertMessage = error.localizedDescription
+                        showingAlert = true
+                    }
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    ContentView()
+        .frame(width: 700, height: 850)
+}

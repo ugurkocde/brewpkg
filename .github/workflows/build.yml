@@ -1,0 +1,274 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # Allow committing the PKG back to repo
+
+jobs:
+  build:
+    name: Build, Sign, and Notarize
+    runs-on: macos-14 # M1 Mac runner for ARM64 builds
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show build environment
+        run: |
+          echo "macOS version:"
+          sw_vers
+          echo "Xcode version:"
+          xcodebuild -version
+          echo "Available SDKs:"
+          xcodebuild -showsdks
+
+      - name: Import signing certificate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Create keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          
+          # Handle empty or "none" password
+          if [ "$APPLE_CERTIFICATE_PASSWORD" = "none" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
+            CERT_PASS=""
+          else
+            CERT_PASS="$APPLE_CERTIFICATE_PASSWORD"
+          fi
+          
+          security import certificate.p12 \
+            -P "$CERT_PASS" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          # Set keychain
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Clean up certificate file
+          rm certificate.p12
+
+      - name: Build app
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
+        run: |
+          set -o pipefail
+
+          # Determine signing settings based on available credentials
+          if [ -n "$APPLE_IDENTITY" ] && [ -n "$APPLE_TEAM_ID" ] && [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "Building with Developer ID code signing for distribution"
+            CODE_SIGN_IDENTITY="$APPLE_IDENTITY"
+            CODE_SIGNING_REQUIRED="YES"
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+          else
+            echo "Building without code signing (PR or missing credentials)"
+            CODE_SIGN_IDENTITY="-"
+            CODE_SIGNING_REQUIRED="NO"
+            DEVELOPMENT_TEAM=""
+          fi
+
+          xcodebuild clean build \
+            -project brewpkg.xcodeproj \
+            -scheme brewpkg \
+            -configuration Release \
+            -derivedDataPath build \
+            -allowProvisioningUpdates \
+            CODE_SIGN_STYLE="Manual" \
+            CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+            CODE_SIGNING_REQUIRED="$CODE_SIGNING_REQUIRED" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            PROVISIONING_PROFILE="" \
+            ENABLE_HARDENED_RUNTIME="YES" \
+            OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" \
+            MACOSX_DEPLOYMENT_TARGET="15.4"
+
+      - name: Sign embedded frameworks and resources
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
+        run: |
+          APP_PATH="build/Build/Products/Release/brewpkg.app"
+          
+          if [ -n "$APPLE_IDENTITY" ]; then
+            echo "Signing embedded frameworks and resources..."
+            
+            # Sign any embedded frameworks
+            if [ -d "$APP_PATH/Contents/Frameworks" ]; then
+              find "$APP_PATH/Contents/Frameworks" -type f -perm +111 -exec \
+                codesign --force --sign "$APPLE_IDENTITY" \
+                         --options runtime \
+                         --timestamp \
+                         --preserve-metadata=identifier,entitlements,flags {} \;
+              
+              find "$APP_PATH/Contents/Frameworks" -name "*.framework" -exec \
+                codesign --force --sign "$APPLE_IDENTITY" \
+                         --options runtime \
+                         --timestamp \
+                         --preserve-metadata=identifier,entitlements,flags {} \;
+            fi
+            
+            # Sign the brewpkg-engine.sh script
+            if [ -f "$APP_PATH/Contents/Resources/brewpkg-engine.sh" ]; then
+              codesign --force --sign "$APPLE_IDENTITY" \
+                       --options runtime \
+                       --timestamp \
+                       "$APP_PATH/Contents/Resources/brewpkg-engine.sh"
+            fi
+            
+            # Re-sign the main app bundle
+            codesign --force --sign "$APPLE_IDENTITY" \
+                     --options runtime \
+                     --timestamp \
+                     --entitlements brewpkg/brewpkg.entitlements \
+                     "$APP_PATH"
+            
+            # Verify the signature
+            codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+            
+            echo "Code signing completed"
+          fi
+
+      - name: Notarize app
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP_PATH="build/Build/Products/Release/brewpkg.app"
+          
+          # Check if we have notarization credentials
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "Starting notarization process..."
+            
+            # Create a zip for notarization
+            ditto -c -k --keepParent "$APP_PATH" "brewpkg.zip"
+            
+            # Submit for notarization
+            echo "Submitting app for notarization..."
+            xcrun notarytool submit "brewpkg.zip" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait \
+              --timeout 30m
+            
+            # Staple the notarization ticket
+            echo "Stapling notarization ticket..."
+            xcrun stapler staple "$APP_PATH"
+            
+            # Clean up zip
+            rm "brewpkg.zip"
+            
+            echo "Notarization completed successfully"
+          else
+            echo "Skipping notarization - credentials not available"
+          fi
+
+      - name: Create PKG installer
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          APPLE_INSTALLER_IDENTITY: ${{ secrets.APPLE_INSTALLER_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Creating PKG installer..."
+          APP_PATH="build/Build/Products/Release/brewpkg.app"
+          PKG_PATH="brewpkg.pkg"
+          
+          # Create PKG using the helper script
+          ./create-pkg.sh "$APP_PATH" "$PKG_PATH"
+          
+          # Notarize PKG if credentials are available
+          if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+            echo "Notarizing PKG..."
+            xcrun notarytool submit "$PKG_PATH" \
+              --apple-id "${APPLE_ID}" \
+              --password "${APPLE_PASSWORD}" \
+              --team-id "${APPLE_TEAM_ID}" \
+              --wait \
+              --timeout 30m
+            
+            # Staple the notarization ticket
+            echo "Stapling notarization ticket to PKG..."
+            xcrun stapler staple "$PKG_PATH"
+          fi
+          
+          echo "PKG_FILE=$PKG_PATH" >> $GITHUB_ENV
+
+      - name: Commit PKG to repository and generate appcast
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # Configure git
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # Create releases directory if it doesn't exist
+          mkdir -p releases
+
+          # Move PKG to releases directory
+          if [ -f "$PKG_FILE" ]; then
+            mv "$PKG_FILE" "releases/brewpkg.pkg"
+            git add "releases/brewpkg.pkg"
+          fi
+
+          # Generate appcast.xml for Sparkle updates with signature
+          if [ -f "./generate-appcast.sh" ]; then
+            echo "Generating signed appcast.xml..."
+            # Export version for the script
+            export VERSION=$(defaults read "$PWD/build/Build/Products/Release/brewpkg.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "1.0.0")
+            ./generate-appcast.sh
+            git add "releases/appcast.xml"
+          fi
+
+          # Commit and push
+          git commit -m "Update latest build PKG and appcast [skip ci]" || echo "No changes to commit"
+          git push || echo "Nothing to push"
+
+      - name: Upload artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: brewpkg-release
+          path: releases/brewpkg.pkg
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ Build succeeded!\n\nThe PR build completed successfully. Unsigned builds are not distributed for security reasons.\n\nSigned and notarized builds are only created when merging to main.`
+            })

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>brewpkg Updates</title>
+    <link>https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/appcast.xml</link>
+    <description>Most recent changes with links to updates.</description>
+    <language>en</language>
+    <item>
+      <title>Version 1.0.0</title>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <link>https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/brewpkg.pkg</link>
+      <sparkle:edSignature>MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl</sparkle:edSignature>
+      <pubDate>Sat, 24 Aug 2025 12:00:00 +0000</pubDate>
+      <enclosure 
+        url="https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/brewpkg.pkg"
+        sparkle:version="1"
+        sparkle:shortVersionString="1.0.0"
+        length="4194304"
+        type="application/octet-stream"
+        sparkle:edSignature="MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl"
+      />
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <description>
+        <![CDATA[
+          <h2>Initial Release</h2>
+          <ul>
+            <li>Initial release of brewpkg</li>
+            <li>Homebrew package creation functionality</li>
+            <li>Automatic update checking via Sparkle</li>
+          </ul>
+        ]]>
+      </description>
+    </item>
+  </channel>
+</rss>
