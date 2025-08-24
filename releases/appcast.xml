@@ -10,23 +10,15 @@
       <sparkle:version>4</sparkle:version>
       <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
       <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
-      <sparkle:edSignature>5kV3utw2+g/xWPVJyKsTWUbbf/r1lqGdfhuiXZzNXz/wtch2RbnJ6hjLJdqFh59c0XVk0DWjLE+/9qvbw+ZfBQ==</sparkle:edSignature>
-      <pubDate>Sun, 24 Aug 2025 12:45:25 +0000</pubDate>
-      <description><![CDATA[
-        <h3>What's New in 1.0.3</h3>
-        <ul>
-          <li>Updated README with cleaner documentation</li>
-          <li>Removed Intune patch management references</li>
-          <li>Minor UI improvements</li>
-        </ul>
-      ]]></description>
+      <sparkle:edSignature>HZhQHxapw8moc+OuIJbcDDfslS3UGwr9xM8kFin9v7SdEwE94YtPghBwTlaoWCWxHR+NP061XF5Q/J3dsS4sBg==</sparkle:edSignature>
+      <pubDate>Sun, 24 Aug 2025 12:49:25 +0000</pubDate>
       <enclosure 
         url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
         sparkle:version="4"
         sparkle:shortVersionString="1.0.3"
-        length="1978243"
+        length="1978225"
         type="application/octet-stream"
-        sparkle:edSignature="5kV3utw2+g/xWPVJyKsTWUbbf/r1lqGdfhuiXZzNXz/wtch2RbnJ6hjLJdqFh59c0XVk0DWjLE+/9qvbw+ZfBQ=="
+        sparkle:edSignature="HZhQHxapw8moc+OuIJbcDDfslS3UGwr9xM8kFin9v7SdEwE94YtPghBwTlaoWCWxHR+NP061XF5Q/J3dsS4sBg=="
       />
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
     </item>
