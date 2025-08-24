@@ -80,14 +80,20 @@ calculate_signature() {
         echo "$PRIVATE_KEY" > "$TEMP_KEY_FILE"
         
         # Sign the file with Sparkle's sign_update tool using -f flag
-        SIGNATURE=$("$SIGN_UPDATE" "$file" -f "$TEMP_KEY_FILE" 2>/dev/null | tail -1)
+        FULL_OUTPUT=$("$SIGN_UPDATE" "$file" -f "$TEMP_KEY_FILE" 2>/dev/null | tail -1)
         
         # Clean up temp file
         rm -f "$TEMP_KEY_FILE"
         
-        # Check if we got a valid signature
-        if [ -n "$SIGNATURE" ] && [ "$SIGNATURE" != *"ERROR"* ]; then
+        # Extract just the signature value from the output
+        # The output format is: sparkle:edSignature="SIGNATURE" length="SIZE"
+        # We need just the SIGNATURE part
+        if [[ "$FULL_OUTPUT" =~ sparkle:edSignature=\"([^\"]+)\" ]]; then
+            SIGNATURE="${BASH_REMATCH[1]}"
             echo "$SIGNATURE"
+        elif [ -n "$FULL_OUTPUT" ] && [ "$FULL_OUTPUT" != *"ERROR"* ]; then
+            # Fallback: if it's just the signature without the format
+            echo "$FULL_OUTPUT"
         else
             echo "WARNING: Signing failed. Using placeholder signature." >&2
             echo "MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl"
