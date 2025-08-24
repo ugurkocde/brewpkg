@@ -11,12 +11,12 @@
       <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
       <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
       <sparkle:edSignature>MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl</sparkle:edSignature>
-      <pubDate>Sun, 24 Aug 2025 10:45:02 +0000</pubDate>
+      <pubDate>Sun, 24 Aug 2025 10:50:37 +0000</pubDate>
       <enclosure 
         url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
         sparkle:version="1.0"
         sparkle:shortVersionString="1.0"
-        length="1975391"
+        length="1975387"
         type="application/octet-stream"
         sparkle:edSignature="MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl"
       />
