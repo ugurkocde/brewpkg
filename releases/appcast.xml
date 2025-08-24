@@ -10,15 +10,15 @@
       <sparkle:version>1.0.1</sparkle:version>
       <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
       <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
-      <sparkle:edSignature>MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl</sparkle:edSignature>
-      <pubDate>Sun, 24 Aug 2025 11:00:26 +0000</pubDate>
+      <sparkle:edSignature>ERROR! Specifying private key as an argument is no longer supported.</sparkle:edSignature>
+      <pubDate>Sun, 24 Aug 2025 11:11:47 +0000</pubDate>
       <enclosure 
         url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
         sparkle:version="1.0.1"
         sparkle:shortVersionString="1.0.1"
-        length="1975412"
+        length="1975382"
         type="application/octet-stream"
-        sparkle:edSignature="MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl"
+        sparkle:edSignature="ERROR! Specifying private key as an argument is no longer supported."
       />
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
     </item>
