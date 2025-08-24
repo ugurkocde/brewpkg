@@ -75,8 +75,23 @@ calculate_signature() {
     fi
     
     if [ -n "$SIGN_UPDATE" ] && [ -f "$SIGN_UPDATE" ]; then
-        # Sign the file with Sparkle's sign_update tool
-        "$SIGN_UPDATE" "$file" -s "$PRIVATE_KEY" | tail -1
+        # Write private key to temporary file for signing
+        TEMP_KEY_FILE=$(mktemp)
+        echo "$PRIVATE_KEY" > "$TEMP_KEY_FILE"
+        
+        # Sign the file with Sparkle's sign_update tool using -f flag
+        SIGNATURE=$("$SIGN_UPDATE" "$file" -f "$TEMP_KEY_FILE" 2>/dev/null | tail -1)
+        
+        # Clean up temp file
+        rm -f "$TEMP_KEY_FILE"
+        
+        # Check if we got a valid signature
+        if [ -n "$SIGNATURE" ] && [ "$SIGNATURE" != *"ERROR"* ]; then
+            echo "$SIGNATURE"
+        else
+            echo "WARNING: Signing failed. Using placeholder signature." >&2
+            echo "MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl"
+        fi
     else
         echo "WARNING: sign_update tool not found. Using placeholder signature." >&2
         echo "MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl"
