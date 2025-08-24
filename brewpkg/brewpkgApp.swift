@@ -8,14 +8,20 @@
 import SwiftUI
 import Sparkle
 
+// Custom updater delegate for better update messages
+class UpdaterDelegate: NSObject, SPUUpdaterDelegate {
+    // Optional delegate methods can be added here if needed
+}
+
 @main
 struct brewpkgApp: App {
     @State private var showSplash = true
     
     private let updaterController: SPUStandardUpdaterController
+    private let updaterDelegate = UpdaterDelegate()
     
     init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: updaterDelegate, userDriverDelegate: nil)
     }
     
     var body: some Scene {

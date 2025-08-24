@@ -1,0 +1,32 @@
+/* Sparkle Update Framework Customizations */
+
+/* When the app is up to date */
+"You're up to date!" = "You're up to date!";
+"%@ %@ (%@) is currently the newest version available." = "brewpkg %@ is the latest version available.";
+"(You are currently running version %@ (%@).)" = "You are currently running version %@.";
+
+/* Update available dialog */
+"A new version of %@ is available!" = "brewpkg %@ is available!";
+"%@ %@ is now available—you have %@. Would you like to download it now?" = "Version %@ is now available (you have %@). Would you like to update now?";
+"Software Update" = "brewpkg Update";
+
+/* Update installation */
+"Installing Update" = "Installing brewpkg Update";
+"Downloading Update" = "Downloading brewpkg Update";
+"Extracting Update" = "Extracting brewpkg Update";
+"Ready to Install" = "Ready to Install brewpkg";
+"Install and Relaunch" = "Install and Restart brewpkg";
+
+/* Buttons */
+"Install Update" = "Update Now";
+"Automatically download and install updates in the future" = "Automatically install future updates";
+"Download Update" = "Download Update";
+"OK" = "OK";
+
+/* Errors */
+"Update Error!" = "Update Error";
+"The update is improperly signed and could not be validated. Please try again later or contact the app developer." = "The update signature is invalid. Please try again or report this issue on GitHub.";
+
+/* Release notes */
+"Release Notes:" = "What's New:";
+"No Release Notes Available" = "No release notes available for this version.";
