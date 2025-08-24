@@ -227,6 +227,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          CI: true
         run: |
           # Configure git
           git config --local user.email "github-actions[bot]@users.noreply.github.com"

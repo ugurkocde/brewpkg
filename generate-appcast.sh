@@ -53,12 +53,25 @@ calculate_signature() {
         return
     fi
     
-    # Find sign_update tool
+    # Try to find or download sign_update tool
     SIGN_UPDATE=""
     if [ -f "./sign_update" ]; then
         SIGN_UPDATE="./sign_update"
     elif [ -d ~/Library/Developer/Xcode/DerivedData ]; then
         SIGN_UPDATE=$(find ~/Library/Developer/Xcode/DerivedData -path "*/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update" -type f 2>/dev/null | head -1)
+    fi
+    
+    # If not found and we're in CI, download Sparkle
+    if [ -z "$SIGN_UPDATE" ] && [ -n "$CI" ]; then
+        echo "Downloading Sparkle tools for signing..." >&2
+        SPARKLE_VERSION="2.6.4"
+        curl -L -o sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz"
+        tar -xf sparkle.tar.xz
+        if [ -f "bin/sign_update" ]; then
+            SIGN_UPDATE="./bin/sign_update"
+            chmod +x "$SIGN_UPDATE"
+        fi
+        rm -f sparkle.tar.xz
     fi
     
     if [ -n "$SIGN_UPDATE" ] && [ -f "$SIGN_UPDATE" ]; then
