@@ -6,19 +6,19 @@
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.1</title>
-      <sparkle:version>1.0.1</sparkle:version>
-      <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+      <title>Version 1.0.2</title>
+      <sparkle:version>1.0.2</sparkle:version>
+      <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
       <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
-      <sparkle:edSignature>9NsYLKeB4ePPOpNjTT8NLcdVkHwr/3H+MO0fSQzvxkyz0z/vHaNNkYyej1AK65R7ScO+mKIQxdXs4Mv3s9zdCQ==</sparkle:edSignature>
-      <pubDate>Sun, 24 Aug 2025 11:25:05 +0000</pubDate>
+      <sparkle:edSignature>6uiqrN65T7sBkcD/JEwvfn3u62tNfB7ZubOGRnBFjvws063uQev/oO8iHNKiqu87AqMPBWBYoA9C8XWVW79jDw==</sparkle:edSignature>
+      <pubDate>Sun, 24 Aug 2025 11:49:15 +0000</pubDate>
       <enclosure 
         url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
-        sparkle:version="1.0.1"
-        sparkle:shortVersionString="1.0.1"
-        length="1975363"
+        sparkle:version="1.0.2"
+        sparkle:shortVersionString="1.0.2"
+        length="1978422"
         type="application/octet-stream"
-        sparkle:edSignature="9NsYLKeB4ePPOpNjTT8NLcdVkHwr/3H+MO0fSQzvxkyz0z/vHaNNkYyej1AK65R7ScO+mKIQxdXs4Mv3s9zdCQ=="
+        sparkle:edSignature="6uiqrN65T7sBkcD/JEwvfn3u62tNfB7ZubOGRnBFjvws063uQev/oO8iHNKiqu87AqMPBWBYoA9C8XWVW79jDw=="
       />
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
     </item>
