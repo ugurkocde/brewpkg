@@ -7,14 +7,14 @@
     <language>en</language>
     <item>
       <title>Version 1.0.2</title>
-      <sparkle:version>$(CURRENT_PROJECT_VERSION)</sparkle:version>
+      <sparkle:version>2</sparkle:version>
       <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
       <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
       <sparkle:edSignature>pPOOadHqA8h8BmL/MP+cuFCg+uTwjYGo9vpCKN9cR0qHXcuprdqpvovdbSaj+8se/ppj3mbpXQJowlL1+sMXAg==</sparkle:edSignature>
       <pubDate>Sun, 24 Aug 2025 12:20:36 +0000</pubDate>
       <enclosure 
         url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
-        sparkle:version="$(CURRENT_PROJECT_VERSION)"
+        sparkle:version="2"
         sparkle:shortVersionString="1.0.2"
         length="1978403"
         type="application/octet-stream"

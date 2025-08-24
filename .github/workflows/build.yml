@@ -245,8 +245,10 @@ jobs:
           # Generate appcast.xml for Sparkle updates with signature
           if [ -f "./generate-appcast.sh" ]; then
             echo "Generating signed appcast.xml..."
-            # Export version for the script
+            # Export version and build number for the script
             export VERSION=$(defaults read "$PWD/build/Build/Products/Release/brewpkg.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "1.0.0")
+            export BUILD_NUMBER=$(defaults read "$PWD/build/Build/Products/Release/brewpkg.app/Contents/Info.plist" CFBundleVersion 2>/dev/null || echo "1")
+            echo "Version: $VERSION, Build: $BUILD_NUMBER"
             ./generate-appcast.sh
             git add "releases/appcast.xml"
           fi
