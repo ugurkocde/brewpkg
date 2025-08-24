@@ -30,6 +30,21 @@ extract_version() {
     fi
 }
 
+# Function to extract build number from pkg file
+extract_build_number() {
+    local pkg_file=$1
+    # Try to get build number from GitHub Actions environment or Info.plist
+    if [ -n "$BUILD_NUMBER" ]; then
+        echo "$BUILD_NUMBER"
+    elif [ -f "brewpkg/Info.plist" ]; then
+        /usr/libexec/PlistBuddy -c "Print CFBundleVersion" brewpkg/Info.plist 2>/dev/null || echo "1"
+    elif [ -f "build/Build/Products/Release/brewpkg.app/Contents/Info.plist" ]; then
+        /usr/libexec/PlistBuddy -c "Print CFBundleVersion" build/Build/Products/Release/brewpkg.app/Contents/Info.plist 2>/dev/null || echo "1"
+    else
+        echo "1"
+    fi
+}
+
 # Function to get file size
 get_file_size() {
     local file=$1
@@ -119,6 +134,7 @@ EOF
 if [ -f "$RELEASES_DIR/brewpkg.pkg" ]; then
     PKG_FILE="$RELEASES_DIR/brewpkg.pkg"
     VERSION=$(extract_version "$PKG_FILE")
+    BUILD_NUM=$(extract_build_number "$PKG_FILE")
     FILE_SIZE=$(get_file_size "$PKG_FILE")
     SIGNATURE=$(calculate_signature "$PKG_FILE")
     
@@ -129,14 +145,14 @@ if [ -f "$RELEASES_DIR/brewpkg.pkg" ]; then
     cat >> "$APPCAST_FILE" << EOF
     <item>
       <title>Version $VERSION</title>
-      <sparkle:version>$VERSION</sparkle:version>
+      <sparkle:version>$BUILD_NUM</sparkle:version>
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
       <link>$RAW_URL/brewpkg.pkg</link>
       <sparkle:edSignature>$SIGNATURE</sparkle:edSignature>
       <pubDate>$PUB_DATE</pubDate>
       <enclosure 
         url="$RAW_URL/brewpkg.pkg"
-        sparkle:version="$VERSION"
+        sparkle:version="$BUILD_NUM"
         sparkle:shortVersionString="$VERSION"
         length="$FILE_SIZE"
         type="application/octet-stream"
