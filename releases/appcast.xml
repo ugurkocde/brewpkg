@@ -7,31 +7,20 @@
     <language>en</language>
     <item>
       <title>Version 1.0.2</title>
-      <sparkle:version>3</sparkle:version>
+      <sparkle:version>1.0.2</sparkle:version>
       <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
       <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
-      <sparkle:edSignature>6uiqrN65T7sBkcD/JEwvfn3u62tNfB7ZubOGRnBFjvws063uQev/oO8iHNKiqu87AqMPBWBYoA9C8XWVW79jDw==</sparkle:edSignature>
-      <pubDate>Sun, 24 Aug 2025 11:49:15 +0000</pubDate>
+      <sparkle:edSignature>1SNAGB32bONaHvP7hCWoCbOTi2lrKld0ZvDCNaDRr4fgLJ76fr/42L2fNC4DGGnmhbvEu7np27nmLeiLXH+1DQ==</sparkle:edSignature>
+      <pubDate>Sun, 24 Aug 2025 12:13:19 +0000</pubDate>
       <enclosure 
         url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
-        sparkle:version="3"
+        sparkle:version="1.0.2"
         sparkle:shortVersionString="1.0.2"
-        length="1978422"
+        length="1978381"
         type="application/octet-stream"
-        sparkle:edSignature="6uiqrN65T7sBkcD/JEwvfn3u62tNfB7ZubOGRnBFjvws063uQev/oO8iHNKiqu87AqMPBWBYoA9C8XWVW79jDw=="
+        sparkle:edSignature="1SNAGB32bONaHvP7hCWoCbOTi2lrKld0ZvDCNaDRr4fgLJ76fr/42L2fNC4DGGnmhbvEu7np27nmLeiLXH+1DQ=="
       />
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <description>
-        <![CDATA[
-          <h2>What's New in Version 1.0.2</h2>
-          <ul>
-            <li>Improved Sparkle update integration</li>
-            <li>Fixed version number display</li>
-            <li>Better update signatures</li>
-            <li>Enhanced stability and performance</li>
-          </ul>
-        ]]>
-      </description>
     </item>
   </channel>
 </rss>
