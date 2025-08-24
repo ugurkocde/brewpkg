@@ -37,6 +37,6 @@
 	<key>SUPublicEDKey</key>
 	<string>jQLFACv9e0Fr683iKC454Kcl2+u/hqsxGBl2cEAzdZk=</string>
 	<key>SUShowReleaseNotes</key>
-	<true/>
+	<false/>
 </dict>
 </plist>
