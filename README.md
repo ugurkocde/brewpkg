@@ -20,6 +20,4 @@ A native macOS application that simplifies creating installer packages for your 
 
 ## About
 
-brewpkg includes patch management for macOS apps built for Intune deployments.
-
 Made by [Ugur](https://github.com/ugurkocde) and the [Intune Community Heroes](https://intunebrew.com)

@@ -153,10 +153,6 @@ struct ContentView: View {
                             }
                         }
                         .help("Visit IntuneBrew for macOS app management in Intune")
-                        
-                        Text("Includes patch management for macOS apps in Intune")
-                            .font(Typography.caption())
-                            .foregroundColor(.tertiaryText)
                             .lineLimit(2)
                         
                         // Author credits
