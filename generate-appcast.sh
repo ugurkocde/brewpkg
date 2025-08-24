@@ -8,8 +8,8 @@ set -e
 # Configuration
 RELEASES_DIR="releases"
 APPCAST_FILE="$RELEASES_DIR/appcast.xml"
-BASE_URL="https://github.com/ugurkoc/brewpkg/releases/download"
-RAW_URL="https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases"
+BASE_URL="https://github.com/ugurkocde/brewpkg/releases/download"
+RAW_URL="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases"
 
 # Check if releases directory exists
 if [ ! -d "$RELEASES_DIR" ]; then
@@ -76,7 +76,7 @@ cat > "$APPCAST_FILE" << 'EOF'
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>brewpkg Updates</title>
-    <link>https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/appcast.xml</link>
+    <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/appcast.xml</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
 EOF

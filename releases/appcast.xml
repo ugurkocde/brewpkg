@@ -2,18 +2,18 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>brewpkg Updates</title>
-    <link>https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/appcast.xml</link>
+    <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/appcast.xml</link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
     <item>
       <title>Version 1.0</title>
       <sparkle:version>1.0</sparkle:version>
       <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
-      <link>https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/brewpkg.pkg</link>
+      <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
       <sparkle:edSignature>MEUCIQDQkPgkr1XnbmLmP8vYPgKGbqcLv2p5K5vqw3I7HqMbPwIgZGlzIGlzIGEgcGxhY2Vob2xkZXIgc2lnbmF0dXJl</sparkle:edSignature>
       <pubDate>Sun, 24 Aug 2025 10:45:02 +0000</pubDate>
       <enclosure 
-        url="https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/brewpkg.pkg"
+        url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
         sparkle:version="1.0"
         sparkle:shortVersionString="1.0"
         length="1975391"

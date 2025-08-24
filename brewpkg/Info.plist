@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/ugurkoc/brewpkg/main/releases/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUScheduledCheckInterval</key>
