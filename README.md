@@ -20,4 +20,4 @@ A native macOS application that simplifies creating installer packages for your 
 
 ## About
 
-Made by [Ugur](https://github.com/ugurkocde) and the [Intune Community Heroes](https://intunebrew.com)
+Made by [Ugur Koc]([https://github.com/ugurkocde](https://www.linkedin.com/in/ugurkocde/)) and the [Intune Community Heroes](https://www.linkedin.com/groups/14802021/)
