@@ -293,7 +293,39 @@ struct ContentView: View {
                         ConfigurationSection(title: "Build Options", icon: "gearshape.2.fill", isExpanded: $buildOptionsExpanded) {
                             VStack(alignment: .leading, spacing: Spacing.sm) {
                                 Toggle("Include preinstall script", isOn: $configuration.includePreinstall)
+                                
+                                if configuration.includePreinstall {
+                                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                                        Text("Preinstall Script:")
+                                            .font(Typography.caption())
+                                            .foregroundColor(.secondaryText)
+                                        TextEditor(text: $configuration.preinstallScript)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .frame(height: 100)
+                                            .background(Color.black.opacity(0.05))
+                                            .cornerRadius(Layout.smallCornerRadius)
+                                    }
+                                    .padding(.leading, 20)
+                                    .padding(.bottom, Spacing.sm)
+                                }
+                                
                                 Toggle("Include postinstall script", isOn: $configuration.includePostinstall)
+                                
+                                if configuration.includePostinstall {
+                                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                                        Text("Postinstall Script:")
+                                            .font(Typography.caption())
+                                            .foregroundColor(.secondaryText)
+                                        TextEditor(text: $configuration.postinstallScript)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .frame(height: 100)
+                                            .background(Color.black.opacity(0.05))
+                                            .cornerRadius(Layout.smallCornerRadius)
+                                    }
+                                    .padding(.leading, 20)
+                                    .padding(.bottom, Spacing.sm)
+                                }
+                                
                                 Toggle("Preserve file permissions", isOn: $configuration.preservePermissions)
                                 
                                 if configuration.packageMode == .fileDeployment {

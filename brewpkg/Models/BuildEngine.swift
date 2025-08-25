@@ -92,17 +92,44 @@ class BuildEngine: ObservableObject {
         try FileManager.default.copyItem(at: engineURL, to: tempEngineURL)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempEngineURL.path)
         
+        // Create temp script files if needed
+        var tempPreinstallURL: URL?
+        var tempPostinstallURL: URL?
+        
         defer {
             try? FileManager.default.removeItem(at: tempEngineURL)
+            if let url = tempPreinstallURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+            if let url = tempPostinstallURL {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
         
         // Create process
         let task = Process()
         task.executableURL = tempEngineURL
-        task.arguments = configuration.buildArguments(
+        var args = configuration.buildArguments(
             inputPath: inputURL.path,
             outputPath: outputURL.path
         )
+        
+        // Write custom script files if provided
+        if configuration.includePreinstall && !configuration.preinstallScript.isEmpty {
+            tempPreinstallURL = tempDir.appendingPathComponent("preinstall-\(UUID().uuidString).sh")
+            try configuration.preinstallScript.write(to: tempPreinstallURL!, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempPreinstallURL!.path)
+            args.append(contentsOf: ["--preinstall-file", tempPreinstallURL!.path])
+        }
+        
+        if configuration.includePostinstall && !configuration.postinstallScript.isEmpty {
+            tempPostinstallURL = tempDir.appendingPathComponent("postinstall-\(UUID().uuidString).sh")
+            try configuration.postinstallScript.write(to: tempPostinstallURL!, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempPostinstallURL!.path)
+            args.append(contentsOf: ["--postinstall-file", tempPostinstallURL!.path])
+        }
+        
+        task.arguments = args
         
         // Setup pipes for output
         let outputPipe = Pipe()
