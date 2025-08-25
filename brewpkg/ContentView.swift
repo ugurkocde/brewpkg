@@ -238,7 +238,10 @@ struct ContentView: View {
                 ScrollView {
                     VStack(spacing: Spacing.lg) {
                         // Package Mode Selector
-                        PackageModeSelector(packageMode: $configuration.packageMode)
+                        PackageModeSelector(
+                            packageMode: $configuration.packageMode,
+                            onReset: resetAll
+                        )
                             .padding(.top, Spacing.lg)
                         
                         // Template Selector
@@ -970,6 +973,7 @@ struct SaveTemplateDialog: View {
 struct PackageModeSelector: View {
     @Binding var packageMode: PackageMode
     @State private var showingInfo = false
+    var onReset: (() -> Void)?
     
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -1014,6 +1018,16 @@ struct PackageModeSelector: View {
                     }
                     .padding()
                     .frame(width: 350)
+                }
+                
+                // Reset button
+                if let onReset = onReset {
+                    Button(action: onReset) {
+                        Label("Reset", systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Reset all fields and start over")
                 }
                 
                 Spacer()
