@@ -9,25 +9,52 @@ import SwiftUI
 import Sparkle
 
 // Custom updater delegate for better update messages
-class UpdaterDelegate: NSObject, SPUUpdaterDelegate {
-    // Optional delegate methods can be added here if needed
+class UpdaterDelegate: NSObject, SPUUpdaterDelegate, ObservableObject {
+    @Published var updateAvailable = false
+    @Published var updateVersion: String?
+    
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        DispatchQueue.main.async {
+            self.updateAvailable = true
+            self.updateVersion = item.displayVersionString
+            
+            // Show a system notification
+            let notification = NSUserNotification()
+            notification.title = "brewpkg Update Available"
+            notification.informativeText = "Version \(item.displayVersionString) is available. Click to update."
+            notification.soundName = NSUserNotificationDefaultSoundName
+            notification.hasActionButton = true
+            notification.actionButtonTitle = "Update"
+            
+            NSUserNotificationCenter.default.deliver(notification)
+        }
+    }
+    
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        DispatchQueue.main.async {
+            self.updateAvailable = false
+            self.updateVersion = nil
+        }
+    }
 }
 
 @main
 struct brewpkgApp: App {
     @State private var showSplash = true
+    @StateObject private var updaterDelegate = UpdaterDelegate()
     
     private let updaterController: SPUStandardUpdaterController
-    private let updaterDelegate = UpdaterDelegate()
     
     init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: updaterDelegate, userDriverDelegate: nil)
+        let delegate = UpdaterDelegate()
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: delegate, userDriverDelegate: nil)
+        _updaterDelegate = StateObject(wrappedValue: delegate)
     }
     
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView(updaterController: updaterController)
+                ContentView(updaterController: updaterController, updaterDelegate: updaterDelegate)
                     .opacity(showSplash ? 0 : 1)
                     .animation(.easeIn(duration: 0.5), value: showSplash)
                 

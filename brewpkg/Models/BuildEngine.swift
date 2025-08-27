@@ -89,8 +89,11 @@ class BuildEngine: ObservableObject {
         let tempDir = FileManager.default.temporaryDirectory
         let tempEngineURL = tempDir.appendingPathComponent("brewpkg-engine-\(UUID().uuidString).sh")
         
-        try FileManager.default.copyItem(at: engineURL, to: tempEngineURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempEngineURL.path)
+        // Perform file operations on background queue
+        try await Task.detached(priority: .userInitiated) {
+            try FileManager.default.copyItem(at: engineURL, to: tempEngineURL)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempEngineURL.path)
+        }.value
         
         // Create temp script files if needed
         var tempPreinstallURL: URL?
@@ -117,15 +120,21 @@ class BuildEngine: ObservableObject {
         // Write custom script files if provided
         if configuration.includePreinstall && !configuration.preinstallScript.isEmpty {
             tempPreinstallURL = tempDir.appendingPathComponent("preinstall-\(UUID().uuidString).sh")
-            try configuration.preinstallScript.write(to: tempPreinstallURL!, atomically: true, encoding: .utf8)
-            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempPreinstallURL!.path)
+            let preinstallURL = tempPreinstallURL!
+            try await Task.detached(priority: .userInitiated) {
+                try configuration.preinstallScript.write(to: preinstallURL, atomically: true, encoding: .utf8)
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: preinstallURL.path)
+            }.value
             args.append(contentsOf: ["--preinstall-file", tempPreinstallURL!.path])
         }
         
         if configuration.includePostinstall && !configuration.postinstallScript.isEmpty {
             tempPostinstallURL = tempDir.appendingPathComponent("postinstall-\(UUID().uuidString).sh")
-            try configuration.postinstallScript.write(to: tempPostinstallURL!, atomically: true, encoding: .utf8)
-            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempPostinstallURL!.path)
+            let postinstallURL = tempPostinstallURL!
+            try await Task.detached(priority: .userInitiated) {
+                try configuration.postinstallScript.write(to: postinstallURL, atomically: true, encoding: .utf8)
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: postinstallURL.path)
+            }.value
             args.append(contentsOf: ["--postinstall-file", tempPostinstallURL!.path])
         }
         

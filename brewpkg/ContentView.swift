@@ -11,6 +11,7 @@ import Sparkle
 
 struct ContentView: View {
     let updaterController: SPUStandardUpdaterController
+    @ObservedObject var updaterDelegate: UpdaterDelegate
     @State private var inputURL: URL?
     @State private var fileInfo: FileInfo?
     @State private var configuration = PackageConfiguration()
@@ -31,8 +32,9 @@ struct ContentView: View {
     @State private var isCheckingForUpdates = false
     @State private var updateCheckMessage = ""
     
-    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)) {
+    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate = UpdaterDelegate()) {
         self.updaterController = updaterController
+        self.updaterDelegate = updaterDelegate
     }
     
     var canBuild: Bool {
@@ -97,14 +99,21 @@ struct ContentView: View {
                                         checkForUpdates()
                                     }) {
                                         HStack(spacing: 4) {
-                                            Image(systemName: "arrow.triangle.2.circlepath.circle")
+                                            Image(systemName: updaterDelegate.updateAvailable ? "arrow.triangle.2.circlepath.circle.fill" : "arrow.triangle.2.circlepath.circle")
                                                 .font(.caption)
-                                            Text("Check for Updates")
+                                                .foregroundColor(updaterDelegate.updateAvailable ? .accentColor : .primary)
+                                            Text(updaterDelegate.updateAvailable ? "Update Available!" : "Check for Updates")
                                                 .font(Typography.caption())
+                                                .fontWeight(updaterDelegate.updateAvailable ? .semibold : .regular)
+                                            if updaterDelegate.updateAvailable, let version = updaterDelegate.updateVersion {
+                                                Text("(v\(version))")
+                                                    .font(Typography.caption())
+                                                    .foregroundColor(.secondaryText)
+                                            }
                                         }
                                     }
                                     .buttonStyle(.plain)
-                                    .foregroundColor(.primaryAction)
+                                    .foregroundColor(updaterDelegate.updateAvailable ? .accentColor : .primaryAction)
                                     .onHover { isHovering in
                                         if isHovering {
                                             NSCursor.pointingHand.push()
@@ -112,6 +121,16 @@ struct ContentView: View {
                                             NSCursor.pop()
                                         }
                                     }
+                                    .overlay(
+                                        Group {
+                                            if updaterDelegate.updateAvailable {
+                                                Circle()
+                                                    .fill(Color.red)
+                                                    .frame(width: 8, height: 8)
+                                                    .offset(x: -35, y: -8)
+                                            }
+                                        }
+                                    )
                                 }
                             }
                             
@@ -402,6 +421,11 @@ struct ContentView: View {
         }
         .onAppear {
             signingIdentityManager.loadIdentities()
+            
+            // Check for updates silently on launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                updaterController.updater.checkForUpdatesInBackground()
+            }
         }
         .onChange(of: buildEngine.state) { newState in
             updateBuildStatus(newState)
@@ -532,7 +556,9 @@ struct StatusBannerView: View {
             
             if status.type == .success, let url = outputURL {
                 Button("Reveal in Finder") {
-                    NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: "")
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: "")
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -1124,6 +1150,6 @@ class SigningIdentityManager: ObservableObject {
 }
 
 #Preview {
-    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil))
+    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate())
         .frame(width: 1000, height: 800)
 }

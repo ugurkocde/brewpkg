@@ -119,10 +119,12 @@ struct CompletedStateView: View {
                             .font(.footnote)
                         
                         Button(url.lastPathComponent) {
-                            NSWorkspace.shared.selectFile(
-                                url.path,
-                                inFileViewerRootedAtPath: url.deletingLastPathComponent().path
-                            )
+                            DispatchQueue.global(qos: .userInitiated).async {
+                                NSWorkspace.shared.selectFile(
+                                    url.path,
+                                    inFileViewerRootedAtPath: url.deletingLastPathComponent().path
+                                )
+                            }
                         }
                         .buttonStyle(.link)
                         .font(Typography.footnote())

@@ -46,10 +46,12 @@ class KeychainHelper {
         task.standardError = Pipe()
         
         do {
-            task.launch()
+            try task.run()
+            
+            // Read data asynchronously to prevent blocking
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             task.waitUntilExit()
             
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let output = String(data: data, encoding: .utf8) else { return [] }
             
             // Parse and filter for Developer ID Installer certificates
