@@ -6,6 +6,38 @@
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
     <item>
+      <title>Version 1.2.0</title>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+      <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
+      <sparkle:edSignature>SIGNATURE_TO_BE_UPDATED</sparkle:edSignature>
+      <pubDate>Wed, 27 Aug 2025 14:30:00 +0000</pubDate>
+      <enclosure 
+        url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
+        sparkle:version="6"
+        sparkle:shortVersionString="1.2.0"
+        length="0"
+        type="application/octet-stream"
+        sparkle:edSignature="SIGNATURE_TO_BE_UPDATED"
+      />
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <description>
+        <![CDATA[
+          <h3>Version 1.2.0</h3>
+          <ul>
+            <li>Fixed code signing certificate selection - now correctly uses certificate ID instead of name</li>
+            <li>Improved DMG mounting to handle volumes with spaces in names</li>
+            <li>Fixed SwiftUI main thread warnings for smoother UI updates</li>
+            <li>Enhanced notification system with floating toast notifications at bottom</li>
+            <li>Added automatic update checking on app launch</li>
+            <li>Added visual update indicator when updates are available</li>
+            <li>Fixed all blocking operations to prevent UI freezing</li>
+            <li>Improved async handling for file operations and process execution</li>
+          </ul>
+        ]]>
+      </description>
+    </item>
+    <item>
       <title>Version 1.1.0</title>
       <sparkle:version>5</sparkle:version>
       <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
