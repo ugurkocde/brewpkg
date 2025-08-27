@@ -2,7 +2,7 @@
 
 A native macOS application that simplifies creating installer packages for your applications. Just drag, drop, and package.
 
-![brewpkg Screenshot](screenshot.png)
+<img width="1012" height="840" alt="image" src="https://github.com/user-attachments/assets/c3d1e9a5-4409-47be-b529-3ec6499be41a" />
 
 ## Download
 
