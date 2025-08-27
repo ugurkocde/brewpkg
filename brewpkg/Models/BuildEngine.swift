@@ -131,6 +131,10 @@ class BuildEngine: ObservableObject {
         
         task.arguments = args
         
+        // Debug: Log the command being executed
+        print("[BUILD DEBUG] Executing: \(tempEngineURL.path)")
+        print("[BUILD DEBUG] Arguments: \(args.joined(separator: " "))")
+        
         // Setup pipes for output
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -160,7 +164,7 @@ class BuildEngine: ObservableObject {
                 }
                 
                 try task.run()
-                updateProgress(0.1)
+                self.updateProgress(0.1)
             } catch {
                 continuation.resume(throwing: error)
             }
@@ -197,6 +201,9 @@ class BuildEngine: ObservableObject {
     private func appendLog(_ text: String) {
         logOutput += text
         
+        // Log to console for debugging
+        print("[BUILD LOG] \(text.trimmingCharacters(in: .whitespacesAndNewlines))")
+        
         // Keep log size reasonable
         if logOutput.count > 100000 {
             if let index = logOutput.index(logOutput.startIndex, offsetBy: 50000, limitedBy: logOutput.endIndex) {
@@ -230,8 +237,11 @@ class BuildEngine: ObservableObject {
     }
     
     private func updateProgress(_ value: Double) {
-        if value > progress {
-            progress = value
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if value > self.progress {
+                self.progress = value
+            }
         }
     }
     

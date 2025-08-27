@@ -189,12 +189,30 @@ mount_dmg() {
     log "Mounting DMG: $dmg_path"
     
     local mount_output
-    mount_output=$(hdiutil attach "$dmg_path" -nobrowse -readonly -noverify -noautoopen 2>&1)
+    local mount_exit_code
     
-    MOUNT_POINT=$(echo "$mount_output" | grep -E "^/Volumes/" | tail -1 | awk '{print $1}')
+    # Try to mount the DMG and capture output and exit code
+    mount_output=$(hdiutil attach "$dmg_path" -nobrowse -readonly -noverify -noautoopen 2>&1) || mount_exit_code=$?
+    
+    if [[ $mount_exit_code -ne 0 ]]; then
+        echo "Error: hdiutil attach failed with exit code $mount_exit_code" >&2
+        echo "hdiutil output: $mount_output" >&2
+        exit 1
+    fi
+    
+    # Extract mount point from hdiutil output
+    # The output format is typically: /dev/disk2s1 <tab> <fstype> <tab> /Volumes/Name
+    MOUNT_POINT=$(echo "$mount_output" | grep "/Volumes/" | tail -1 | awk -F$'\t' '{for(i=1;i<=NF;i++) if($i ~ /^\/Volumes\//) print $i}')
     
     if [[ -z "$MOUNT_POINT" ]]; then
-        echo "Error: Failed to mount DMG" >&2
+        echo "Error: Failed to find mount point in hdiutil output" >&2
+        echo "hdiutil output was: $mount_output" >&2
+        exit 1
+    fi
+    
+    # Verify the mount point exists
+    if [[ ! -d "$MOUNT_POINT" ]]; then
+        echo "Error: Mount point does not exist: $MOUNT_POINT" >&2
         exit 1
     fi
     
