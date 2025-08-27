@@ -102,9 +102,19 @@ parse_args() {
                 INCLUDE_PREINSTALL=true
                 shift
                 ;;
+            --preinstall-file)
+                PREINSTALL_FILE="$2"
+                INCLUDE_PREINSTALL=true
+                shift 2
+                ;;
             --postinstall)
                 INCLUDE_POSTINSTALL=true
                 shift
+                ;;
+            --postinstall-file)
+                POSTINSTALL_FILE="$2"
+                INCLUDE_POSTINSTALL=true
+                shift 2
                 ;;
             --preserve-permissions)
                 PRESERVE_PERMISSIONS=true
@@ -179,12 +189,30 @@ mount_dmg() {
     log "Mounting DMG: $dmg_path"
     
     local mount_output
-    mount_output=$(hdiutil attach "$dmg_path" -nobrowse -readonly -noverify -noautoopen 2>&1)
+    local mount_exit_code
     
-    MOUNT_POINT=$(echo "$mount_output" | grep -E "^/Volumes/" | tail -1 | awk '{print $1}')
+    # Try to mount the DMG and capture output and exit code
+    mount_output=$(hdiutil attach "$dmg_path" -nobrowse -readonly -noverify -noautoopen 2>&1) || mount_exit_code=$?
+    
+    if [[ $mount_exit_code -ne 0 ]]; then
+        echo "Error: hdiutil attach failed with exit code $mount_exit_code" >&2
+        echo "hdiutil output: $mount_output" >&2
+        exit 1
+    fi
+    
+    # Extract mount point from hdiutil output
+    # The output format is typically: /dev/disk2s1 <tab> <fstype> <tab> /Volumes/Name
+    MOUNT_POINT=$(echo "$mount_output" | grep "/Volumes/" | tail -1 | awk -F$'\t' '{for(i=1;i<=NF;i++) if($i ~ /^\/Volumes\//) print $i}')
     
     if [[ -z "$MOUNT_POINT" ]]; then
-        echo "Error: Failed to mount DMG" >&2
+        echo "Error: Failed to find mount point in hdiutil output" >&2
+        echo "hdiutil output was: $mount_output" >&2
+        exit 1
+    fi
+    
+    # Verify the mount point exists
+    if [[ ! -d "$MOUNT_POINT" ]]; then
+        echo "Error: Mount point does not exist: $MOUNT_POINT" >&2
         exit 1
     fi
     
@@ -213,15 +241,25 @@ extract_zip() {
 copy_content() {
     local src="$1"
     local dest="$2"
+    local copy_contents_only="${3:-false}"
     
     log "Copying content from: $src to: $dest"
     
-    mkdir -p "$dest"
+    mkdir -p "$(dirname "$dest")"
     
     if [[ "$PRESERVE_PERMISSIONS" == true ]]; then
-        ditto "$src" "$dest"
+        if [[ "$copy_contents_only" == true ]]; then
+            ditto "$src" "$dest"
+        else
+            ditto "$src" "$dest"
+        fi
     else
-        cp -R "$src"/* "$dest/" 2>/dev/null || cp -R "$src" "$dest/"
+        if [[ "$copy_contents_only" == true ]]; then
+            mkdir -p "$dest"
+            cp -R "$src"/* "$dest/" 2>/dev/null || true
+        else
+            cp -R "$src" "$dest"
+        fi
     fi
 }
 
@@ -305,7 +343,7 @@ expand_input() {
             dmg|DMG)
                 input_type="dmg"
                 mount_dmg "$INPUT_PATH"
-                copy_content "$MOUNT_POINT" "$EXPANDED_DIR"
+                copy_content "$MOUNT_POINT" "$EXPANDED_DIR" true
                 ;;
             zip|ZIP)
                 input_type="zip"
@@ -318,7 +356,14 @@ expand_input() {
         esac
     elif [[ -d "$INPUT_PATH" ]]; then
         input_type="directory"
-        copy_content "$INPUT_PATH" "$EXPANDED_DIR"
+        # For directories, check if it's an app bundle
+        if [[ "${INPUT_PATH##*.}" == "app" ]]; then
+            # It's an app bundle, copy as-is
+            copy_content "$INPUT_PATH" "$EXPANDED_DIR/$(basename "$INPUT_PATH")"
+        else
+            # Regular directory, copy contents
+            copy_content "$INPUT_PATH" "$EXPANDED_DIR" true
+        fi
     else
         echo "Error: Invalid input path: $INPUT_PATH" >&2
         exit 1
@@ -338,7 +383,7 @@ prepare_package_root() {
     # If in file deployment mode, just copy everything as-is
     if [[ "$FILE_DEPLOYMENT_MODE" == true ]]; then
         log "File deployment mode: copying content directly to $INSTALL_LOCATION"
-        copy_content "$EXPANDED_DIR" "$install_dir"
+        copy_content "$EXPANDED_DIR" "$install_dir" true
     # Check if we have an app bundle
     elif is_app_bundle "$EXPANDED_DIR"; then
         local app_path=""
@@ -369,7 +414,7 @@ prepare_package_root() {
         fi
         
         # Copy all content
-        copy_content "$EXPANDED_DIR" "$install_dir"
+        copy_content "$EXPANDED_DIR" "$install_dir" true
     fi
     
     log "Package root prepared at: $ROOT_DIR"
@@ -383,12 +428,22 @@ create_scripts() {
         
         if [[ "$INCLUDE_PREINSTALL" == true ]]; then
             log "Creating preinstall script"
-            create_preinstall_script "$SCRIPTS_DIR/preinstall"
+            if [[ -n "$PREINSTALL_FILE" ]] && [[ -f "$PREINSTALL_FILE" ]]; then
+                cp "$PREINSTALL_FILE" "$SCRIPTS_DIR/preinstall"
+                chmod +x "$SCRIPTS_DIR/preinstall"
+            else
+                create_preinstall_script "$SCRIPTS_DIR/preinstall"
+            fi
         fi
         
         if [[ "$INCLUDE_POSTINSTALL" == true ]]; then
             log "Creating postinstall script"
-            create_postinstall_script "$SCRIPTS_DIR/postinstall"
+            if [[ -n "$POSTINSTALL_FILE" ]] && [[ -f "$POSTINSTALL_FILE" ]]; then
+                cp "$POSTINSTALL_FILE" "$SCRIPTS_DIR/postinstall"
+                chmod +x "$SCRIPTS_DIR/postinstall"
+            else
+                create_postinstall_script "$SCRIPTS_DIR/postinstall"
+            fi
         fi
     fi
 }

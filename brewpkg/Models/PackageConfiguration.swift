@@ -49,6 +49,8 @@ struct PackageConfiguration: Codable, Equatable, Hashable {
     var preservePermissions: Bool
     var packageMode: PackageMode
     var createIntermediateFolders: Bool
+    var preinstallScript: String
+    var postinstallScript: String
     
     init(
         identifier: String = "",
@@ -59,7 +61,9 @@ struct PackageConfiguration: Codable, Equatable, Hashable {
         includePostinstall: Bool = false,
         preservePermissions: Bool = false,
         packageMode: PackageMode = .application,
-        createIntermediateFolders: Bool = false
+        createIntermediateFolders: Bool = false,
+        preinstallScript: String = "#!/bin/bash\n# Pre-installation script\necho \"Preparing installation...\"\nexit 0",
+        postinstallScript: String = "#!/bin/bash\n# Post-installation script\necho \"Installation complete.\"\nexit 0"
     ) {
         self.identifier = identifier
         self.version = version
@@ -70,6 +74,8 @@ struct PackageConfiguration: Codable, Equatable, Hashable {
         self.preservePermissions = preservePermissions
         self.packageMode = packageMode
         self.createIntermediateFolders = createIntermediateFolders
+        self.preinstallScript = preinstallScript
+        self.postinstallScript = postinstallScript
     }
     
     var isValid: Bool {

@@ -89,20 +89,60 @@ class BuildEngine: ObservableObject {
         let tempDir = FileManager.default.temporaryDirectory
         let tempEngineURL = tempDir.appendingPathComponent("brewpkg-engine-\(UUID().uuidString).sh")
         
-        try FileManager.default.copyItem(at: engineURL, to: tempEngineURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempEngineURL.path)
+        // Perform file operations on background queue
+        try await Task.detached(priority: .userInitiated) {
+            try FileManager.default.copyItem(at: engineURL, to: tempEngineURL)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempEngineURL.path)
+        }.value
+        
+        // Create temp script files if needed
+        var tempPreinstallURL: URL?
+        var tempPostinstallURL: URL?
         
         defer {
             try? FileManager.default.removeItem(at: tempEngineURL)
+            if let url = tempPreinstallURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+            if let url = tempPostinstallURL {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
         
         // Create process
         let task = Process()
         task.executableURL = tempEngineURL
-        task.arguments = configuration.buildArguments(
+        var args = configuration.buildArguments(
             inputPath: inputURL.path,
             outputPath: outputURL.path
         )
+        
+        // Write custom script files if provided
+        if configuration.includePreinstall && !configuration.preinstallScript.isEmpty {
+            tempPreinstallURL = tempDir.appendingPathComponent("preinstall-\(UUID().uuidString).sh")
+            let preinstallURL = tempPreinstallURL!
+            try await Task.detached(priority: .userInitiated) {
+                try configuration.preinstallScript.write(to: preinstallURL, atomically: true, encoding: .utf8)
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: preinstallURL.path)
+            }.value
+            args.append(contentsOf: ["--preinstall-file", tempPreinstallURL!.path])
+        }
+        
+        if configuration.includePostinstall && !configuration.postinstallScript.isEmpty {
+            tempPostinstallURL = tempDir.appendingPathComponent("postinstall-\(UUID().uuidString).sh")
+            let postinstallURL = tempPostinstallURL!
+            try await Task.detached(priority: .userInitiated) {
+                try configuration.postinstallScript.write(to: postinstallURL, atomically: true, encoding: .utf8)
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: postinstallURL.path)
+            }.value
+            args.append(contentsOf: ["--postinstall-file", tempPostinstallURL!.path])
+        }
+        
+        task.arguments = args
+        
+        // Debug: Log the command being executed
+        print("[BUILD DEBUG] Executing: \(tempEngineURL.path)")
+        print("[BUILD DEBUG] Arguments: \(args.joined(separator: " "))")
         
         // Setup pipes for output
         let outputPipe = Pipe()
@@ -133,7 +173,7 @@ class BuildEngine: ObservableObject {
                 }
                 
                 try task.run()
-                updateProgress(0.1)
+                self.updateProgress(0.1)
             } catch {
                 continuation.resume(throwing: error)
             }
@@ -170,6 +210,9 @@ class BuildEngine: ObservableObject {
     private func appendLog(_ text: String) {
         logOutput += text
         
+        // Log to console for debugging
+        print("[BUILD LOG] \(text.trimmingCharacters(in: .whitespacesAndNewlines))")
+        
         // Keep log size reasonable
         if logOutput.count > 100000 {
             if let index = logOutput.index(logOutput.startIndex, offsetBy: 50000, limitedBy: logOutput.endIndex) {
@@ -203,8 +246,11 @@ class BuildEngine: ObservableObject {
     }
     
     private func updateProgress(_ value: Double) {
-        if value > progress {
-            progress = value
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if value > self.progress {
+                self.progress = value
+            }
         }
     }
     

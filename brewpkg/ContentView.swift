@@ -11,6 +11,7 @@ import Sparkle
 
 struct ContentView: View {
     let updaterController: SPUStandardUpdaterController
+    @ObservedObject var updaterDelegate: UpdaterDelegate
     @State private var inputURL: URL?
     @State private var fileInfo: FileInfo?
     @State private var configuration = PackageConfiguration()
@@ -31,8 +32,9 @@ struct ContentView: View {
     @State private var isCheckingForUpdates = false
     @State private var updateCheckMessage = ""
     
-    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)) {
+    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate = UpdaterDelegate()) {
         self.updaterController = updaterController
+        self.updaterDelegate = updaterDelegate
     }
     
     var canBuild: Bool {
@@ -43,14 +45,9 @@ struct ContentView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Status Banner
-            if let status = buildStatus {
-                StatusBannerView(status: status, outputURL: outputPackageURL)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-            
-            // Main Content
+        ZStack {
+            VStack(spacing: 0) {
+                // Main Content
             HStack(spacing: 0) {
                 // Left Column - Drop Zone
                 VStack(spacing: Spacing.lg) {
@@ -102,14 +99,21 @@ struct ContentView: View {
                                         checkForUpdates()
                                     }) {
                                         HStack(spacing: 4) {
-                                            Image(systemName: "arrow.triangle.2.circlepath.circle")
+                                            Image(systemName: updaterDelegate.updateAvailable ? "arrow.triangle.2.circlepath.circle.fill" : "arrow.triangle.2.circlepath.circle")
                                                 .font(.caption)
-                                            Text("Check for Updates")
+                                                .foregroundColor(updaterDelegate.updateAvailable ? .accentColor : .primary)
+                                            Text(updaterDelegate.updateAvailable ? "Update Available!" : "Check for Updates")
                                                 .font(Typography.caption())
+                                                .fontWeight(updaterDelegate.updateAvailable ? .semibold : .regular)
+                                            if updaterDelegate.updateAvailable, let version = updaterDelegate.updateVersion {
+                                                Text("(v\(version))")
+                                                    .font(Typography.caption())
+                                                    .foregroundColor(.secondaryText)
+                                            }
                                         }
                                     }
                                     .buttonStyle(.plain)
-                                    .foregroundColor(.primaryAction)
+                                    .foregroundColor(updaterDelegate.updateAvailable ? .accentColor : .primaryAction)
                                     .onHover { isHovering in
                                         if isHovering {
                                             NSCursor.pointingHand.push()
@@ -117,6 +121,16 @@ struct ContentView: View {
                                             NSCursor.pop()
                                         }
                                     }
+                                    .overlay(
+                                        Group {
+                                            if updaterDelegate.updateAvailable {
+                                                Circle()
+                                                    .fill(Color.red)
+                                                    .frame(width: 8, height: 8)
+                                                    .offset(x: -35, y: -8)
+                                            }
+                                        }
+                                    )
                                 }
                             }
                             
@@ -293,7 +307,39 @@ struct ContentView: View {
                         ConfigurationSection(title: "Build Options", icon: "gearshape.2.fill", isExpanded: $buildOptionsExpanded) {
                             VStack(alignment: .leading, spacing: Spacing.sm) {
                                 Toggle("Include preinstall script", isOn: $configuration.includePreinstall)
+                                
+                                if configuration.includePreinstall {
+                                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                                        Text("Preinstall Script:")
+                                            .font(Typography.caption())
+                                            .foregroundColor(.secondaryText)
+                                        TextEditor(text: $configuration.preinstallScript)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .frame(height: 100)
+                                            .background(Color.black.opacity(0.05))
+                                            .cornerRadius(Layout.smallCornerRadius)
+                                    }
+                                    .padding(.leading, 20)
+                                    .padding(.bottom, Spacing.sm)
+                                }
+                                
                                 Toggle("Include postinstall script", isOn: $configuration.includePostinstall)
+                                
+                                if configuration.includePostinstall {
+                                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                                        Text("Postinstall Script:")
+                                            .font(Typography.caption())
+                                            .foregroundColor(.secondaryText)
+                                        TextEditor(text: $configuration.postinstallScript)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .frame(height: 100)
+                                            .background(Color.black.opacity(0.05))
+                                            .cornerRadius(Layout.smallCornerRadius)
+                                    }
+                                    .padding(.leading, 20)
+                                    .padding(.bottom, Spacing.sm)
+                                }
+                                
                                 Toggle("Preserve file permissions", isOn: $configuration.preservePermissions)
                                 
                                 if configuration.packageMode == .fileDeployment {
@@ -353,9 +399,21 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
                 .background(Color.cardBackground)
             }
+            }
+            .frame(minWidth: 900, idealWidth: 1000, maxWidth: .infinity, minHeight: 700, idealHeight: 800, maxHeight: .infinity)
+            .background(Color.windowBackground)
+            
+            // Toast Notification Overlay
+            VStack {
+                Spacer()
+                if let status = buildStatus {
+                    StatusBannerView(status: status, outputURL: outputPackageURL)
+                        .padding(Spacing.lg)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(1)
+                }
+            }
         }
-        .frame(minWidth: 900, idealWidth: 1000, maxWidth: .infinity, minHeight: 700, idealHeight: 800, maxHeight: .infinity)
-        .background(Color.windowBackground)
         .alert("Build Error", isPresented: $showingAlert) {
             Button("OK") { }
         } message: {
@@ -363,6 +421,11 @@ struct ContentView: View {
         }
         .onAppear {
             signingIdentityManager.loadIdentities()
+            
+            // Check for updates silently on launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                updaterController.updater.checkForUpdatesInBackground()
+            }
         }
         .onChange(of: buildEngine.state) { newState in
             updateBuildStatus(newState)
@@ -387,6 +450,14 @@ struct ContentView: View {
                     message: "Package built successfully",
                     detail: outputPackageURL?.lastPathComponent
                 )
+                // Auto-dismiss success after 5 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        if buildStatus?.type == .success {
+                            buildStatus = nil
+                        }
+                    }
+                }
             case .failed(let error):
                 buildStatus = BuildStatusInfo(
                     type: .error,
@@ -468,11 +539,12 @@ struct StatusBannerView: View {
     var body: some View {
         HStack {
             Image(systemName: status.type == .success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.title2)
                 .foregroundColor(status.type == .success ? .successGreen : .errorRed)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(status.message)
-                    .font(Typography.body().weight(.medium))
+                    .font(Typography.body().weight(.semibold))
                 if let detail = status.detail {
                     Text(detail)
                         .font(Typography.caption())
@@ -484,19 +556,24 @@ struct StatusBannerView: View {
             
             if status.type == .success, let url = outputURL {
                 Button("Reveal in Finder") {
-                    NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: "")
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: "")
+                    }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             }
         }
         .padding(Spacing.md)
-        .background(status.type == .success ? Color.successGreen.opacity(0.1) : Color.errorRed.opacity(0.1))
+        .frame(maxWidth: 500)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+        )
         .overlay(
-            Rectangle()
-                .fill(status.type == .success ? Color.successGreen : Color.errorRed)
-                .frame(height: 2),
-            alignment: .bottom
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(status.type == .success ? Color.successGreen.opacity(0.5) : Color.errorRed.opacity(0.5), lineWidth: 1.5)
         )
     }
 }
@@ -724,7 +801,7 @@ struct SigningIdentityPicker: View {
                     Divider()
                     ForEach(manager.identities) { identity in
                         Text(identity.displayName)
-                            .tag(String?.some(identity.name))
+                            .tag(String?.some(identity.id))
                     }
                 }
             }
@@ -1073,6 +1150,6 @@ class SigningIdentityManager: ObservableObject {
 }
 
 #Preview {
-    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil))
+    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate())
         .frame(width: 1000, height: 800)
 }

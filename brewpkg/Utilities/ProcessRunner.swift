@@ -15,36 +15,39 @@ class ProcessRunner {
         currentDirectory: URL? = nil
     ) async throws -> (output: String, error: String, exitCode: Int32) {
         return try await withCheckedThrowingContinuation { continuation in
-            let task = Process()
-            task.executableURL = URL(fileURLWithPath: command)
-            task.arguments = arguments
-            
-            if let environment = environment {
-                task.environment = environment
-            }
-            
-            if let currentDirectory = currentDirectory {
-                task.currentDirectoryURL = currentDirectory
-            }
-            
-            let outputPipe = Pipe()
-            let errorPipe = Pipe()
-            task.standardOutput = outputPipe
-            task.standardError = errorPipe
-            
-            do {
-                try task.run()
-                task.waitUntilExit()
+            DispatchQueue.global(qos: .userInitiated).async {
+                let task = Process()
+                task.executableURL = URL(fileURLWithPath: command)
+                task.arguments = arguments
                 
-                let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                if let environment = environment {
+                    task.environment = environment
+                }
                 
-                let output = String(data: outputData, encoding: .utf8) ?? ""
-                let error = String(data: errorData, encoding: .utf8) ?? ""
+                if let currentDirectory = currentDirectory {
+                    task.currentDirectoryURL = currentDirectory
+                }
                 
-                continuation.resume(returning: (output, error, task.terminationStatus))
-            } catch {
-                continuation.resume(throwing: error)
+                let outputPipe = Pipe()
+                let errorPipe = Pipe()
+                task.standardOutput = outputPipe
+                task.standardError = errorPipe
+                
+                task.terminationHandler = { process in
+                    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                    
+                    let output = String(data: outputData, encoding: .utf8) ?? ""
+                    let error = String(data: errorData, encoding: .utf8) ?? ""
+                    
+                    continuation.resume(returning: (output, error, process.terminationStatus))
+                }
+                
+                do {
+                    try task.run()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }

@@ -39,20 +39,29 @@ class KeychainHelper {
     private static func fetchIdentitiesSync() -> [SigningIdentity] {
         let task = Process()
         task.launchPath = "/usr/bin/security"
-        task.arguments = ["find-identity", "-v", "-p", "codesigning"]
+        task.arguments = ["find-identity", "-v"]
         
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = Pipe()
         
         do {
-            task.launch()
+            try task.run()
+            
+            // Read data asynchronously to prevent blocking
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             task.waitUntilExit()
             
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let output = String(data: data, encoding: .utf8) else { return [] }
             
-            return parseSecurityOutput(output)
+            // Parse and filter for Developer ID Installer certificates
+            let allIdentities = parseSecurityOutput(output)
+            return allIdentities.filter { identity in
+                // Filter for Developer ID Installer certificates (for PKG signing)
+                // Also allow "3rd Party Mac Developer Installer" for Mac App Store
+                identity.name.contains("Developer ID Installer") ||
+                identity.name.contains("3rd Party Mac Developer Installer")
+            }
         } catch {
             print("Error fetching signing identities: \(error)")
             return []
