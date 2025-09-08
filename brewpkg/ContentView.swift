@@ -310,9 +310,17 @@ struct ContentView: View {
                                 
                                 if configuration.includePreinstall {
                                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                                        Text("Preinstall Script:")
-                                            .font(Typography.caption())
-                                            .foregroundColor(.secondaryText)
+                                        HStack {
+                                            Text("Preinstall Script:")
+                                                .font(Typography.caption())
+                                                .foregroundColor(.secondaryText)
+                                            Spacer()
+                                            Button(action: loadPreinstallScript) {
+                                                Label("Load from file", systemImage: "doc.text")
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .font(.caption)
+                                        }
                                         TextEditor(text: $configuration.preinstallScript)
                                             .font(.system(.caption, design: .monospaced))
                                             .frame(height: 100)
@@ -327,9 +335,17 @@ struct ContentView: View {
                                 
                                 if configuration.includePostinstall {
                                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                                        Text("Postinstall Script:")
-                                            .font(Typography.caption())
-                                            .foregroundColor(.secondaryText)
+                                        HStack {
+                                            Text("Postinstall Script:")
+                                                .font(Typography.caption())
+                                                .foregroundColor(.secondaryText)
+                                            Spacer()
+                                            Button(action: loadPostinstallScript) {
+                                                Label("Load from file", systemImage: "doc.text")
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .font(.caption)
+                                        }
                                         TextEditor(text: $configuration.postinstallScript)
                                             .font(.system(.caption, design: .monospaced))
                                             .frame(height: 100)
@@ -526,6 +542,58 @@ struct ContentView: View {
             isCheckingForUpdates = false
             // Don't show "up to date" message - let Sparkle handle all feedback
             updateCheckMessage = ""
+        }
+    }
+    
+    private func loadPreinstallScript() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Preinstall Script"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            .shellScript,
+            .text,
+            .plainText,
+            .item  // Allow any file type
+        ]
+        
+        if panel.runModal() == .OK {
+            if let url = panel.url {
+                do {
+                    let scriptContent = try String(contentsOf: url, encoding: .utf8)
+                    configuration.preinstallScript = scriptContent
+                } catch {
+                    // Handle error silently or show an alert if needed
+                    print("Error loading preinstall script: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func loadPostinstallScript() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Postinstall Script"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            .shellScript,
+            .text,
+            .plainText,
+            .item  // Allow any file type
+        ]
+        
+        if panel.runModal() == .OK {
+            if let url = panel.url {
+                do {
+                    let scriptContent = try String(contentsOf: url, encoding: .utf8)
+                    configuration.postinstallScript = scriptContent
+                } catch {
+                    // Handle error silently or show an alert if needed
+                    print("Error loading postinstall script: \(error)")
+                }
+            }
         }
     }
 }

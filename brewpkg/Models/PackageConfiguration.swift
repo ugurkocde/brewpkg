@@ -59,7 +59,7 @@ struct PackageConfiguration: Codable, Equatable, Hashable {
         signingIdentity: String? = nil,
         includePreinstall: Bool = false,
         includePostinstall: Bool = false,
-        preservePermissions: Bool = false,
+        preservePermissions: Bool = true,
         packageMode: PackageMode = .application,
         createIntermediateFolders: Bool = false,
         preinstallScript: String = "#!/bin/bash\n# Pre-installation script\necho \"Preparing installation...\"\nexit 0",

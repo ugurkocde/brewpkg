@@ -28,9 +28,9 @@ struct DropZoneView: View {
     var dropZoneSubtitle: String {
         switch packageMode {
         case .application:
-            return "DMG, ZIP, App Bundle, or Directory"
+            return "DMG, ZIP, App Bundle, Binary, or Directory"
         case .fileDeployment:
-            return "Files, Folders, Scripts, or Configs"
+            return "Any Files, Folders, Scripts, or Configs"
         }
     }
     

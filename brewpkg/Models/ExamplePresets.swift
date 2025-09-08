@@ -51,7 +51,62 @@ class PresetManager {
                 signingIdentity: nil,
                 includePreinstall: false,
                 includePostinstall: true,
-                preservePermissions: false
+                preservePermissions: true,
+                packageMode: .fileDeployment,
+                createIntermediateFolders: true,
+                preinstallScript: "#!/bin/bash\n# Pre-installation script\necho \"Preparing installation...\"\nexit 0",
+                postinstallScript: """
+#!/bin/bash
+# Microsoft Teams Background Post-Install Script
+# This script processes installed images for Teams background compatibility
+
+echo "Processing Microsoft Teams backgrounds..."
+
+# Get the current user
+CURRENT_USER=$(whoami)
+
+# Define the Teams backgrounds directory
+TEAMS_BG_DIR="/Users/$CURRENT_USER/Library/Containers/com.microsoft.teams2/Data/Library/Application Support/Microsoft/MSTeams/Backgrounds/Uploads"
+
+# Create directory if it doesn't exist
+if [ ! -d "$TEAMS_BG_DIR" ]; then
+    echo "Creating Teams backgrounds directory..."
+    mkdir -p "$TEAMS_BG_DIR"
+fi
+
+# Process each image file
+for img in "$TEAMS_BG_DIR"/*.{jpg,jpeg,png,JPG,JPEG,PNG}; do
+    if [ -f "$img" ]; then
+        # Get filename without extension
+        filename=$(basename "$img")
+        name="${filename%.*}"
+        
+        # Generate a unique GUID for Teams
+        GUID=$(uuidgen)
+        
+        # Convert to PNG if needed and rename with GUID
+        if [[ "$img" =~ \\.(jpg|jpeg|JPG|JPEG)$ ]]; then
+            echo "Converting $filename to PNG format..."
+            sips -s format png "$img" --out "$TEAMS_BG_DIR/${GUID}.png" 2>/dev/null
+            rm "$img"
+        else
+            # Rename PNG files with GUID
+            mv "$img" "$TEAMS_BG_DIR/${GUID}.png" 2>/dev/null
+        fi
+        
+        # Create thumbnail (Teams uses 186px height)
+        if [ -f "$TEAMS_BG_DIR/${GUID}.png" ]; then
+            echo "Creating thumbnail for $filename..."
+            sips -Z 186 "$TEAMS_BG_DIR/${GUID}.png" --out "$TEAMS_BG_DIR/${GUID}_thumb.png" 2>/dev/null
+        fi
+    fi
+done
+
+echo "Microsoft Teams backgrounds installation complete!"
+echo "Backgrounds will be available in Teams under Settings > Backgrounds & Effects"
+
+exit 0
+"""
             ),
             hint: "Package your company's branded backgrounds for Microsoft Teams. The postinstall script will process images and generate thumbnails automatically.",
             details: PackagePreset.PresetDetails(
