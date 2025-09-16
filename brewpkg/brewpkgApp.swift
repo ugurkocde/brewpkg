@@ -7,6 +7,22 @@
 
 import SwiftUI
 import Sparkle
+import AppKit
+
+// App commands for menu actions
+class AppCommands: NSObject {
+    @objc static func showChangelog() {
+        if let window = NSApp.windows.first {
+            let hostingController = NSHostingController(rootView: ChangelogView())
+            let panel = NSPanel(contentViewController: hostingController)
+            panel.title = "What's New"
+            panel.styleMask = [.titled, .closable, .resizable]
+            panel.setContentSize(NSSize(width: 600, height: 500))
+            panel.center()
+            window.beginSheet(panel)
+        }
+    }
+}
 
 // Custom updater delegate for better update messages
 class UpdaterDelegate: NSObject, SPUUpdaterDelegate, ObservableObject {
@@ -42,22 +58,24 @@ class UpdaterDelegate: NSObject, SPUUpdaterDelegate, ObservableObject {
 struct brewpkgApp: App {
     @State private var showSplash = true
     @StateObject private var updaterDelegate = UpdaterDelegate()
-    
+    @State private var windowTitle = "brewpkg"
+    @State private var showingChangelogWindow = false
+
     private let updaterController: SPUStandardUpdaterController
-    
+
     init() {
         let delegate = UpdaterDelegate()
         updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: delegate, userDriverDelegate: nil)
         _updaterDelegate = StateObject(wrappedValue: delegate)
     }
-    
+
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(windowTitle) {
             ZStack {
-                ContentView(updaterController: updaterController, updaterDelegate: updaterDelegate)
+                ContentView(updaterController: updaterController, updaterDelegate: updaterDelegate, windowTitle: $windowTitle)
                     .opacity(showSplash ? 0 : 1)
                     .animation(.easeIn(duration: 0.5), value: showSplash)
-                
+
                 if showSplash {
                     SplashScreenView()
                         .transition(.opacity)
@@ -75,6 +93,17 @@ struct brewpkgApp: App {
         .commands {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)
+            }
+            CommandGroup(replacing: .help) {
+                Button("View Changelog") {
+                    NSApp.sendAction(#selector(AppCommands.showChangelog), to: nil, from: nil)
+                }
+                .keyboardShortcut("N", modifiers: [.command, .shift])
+
+                Divider()
+
+                Link("brewpkg Help", destination: URL(string: "https://github.com/ugurkocde/brewpkg")!)
+                Link("Report an Issue", destination: URL(string: "https://github.com/ugurkocde/brewpkg/issues")!)
             }
         }
     }

@@ -18,6 +18,8 @@ PRESERVE_PERMISSIONS=false
 VERBOSE=false
 FILE_DEPLOYMENT_MODE=false
 CREATE_INTERMEDIATE_FOLDERS=false
+PAYLOAD_FREE=false
+REMOVE_XATTR=false
 
 # Temporary directories
 WORK_DIR=""
@@ -126,6 +128,14 @@ parse_args() {
                 ;;
             --create-intermediate-folders)
                 CREATE_INTERMEDIATE_FOLDERS=true
+                shift
+                ;;
+            --nopayload)
+                PAYLOAD_FREE=true
+                shift
+                ;;
+            --remove-xattr)
+                REMOVE_XATTR=true
                 shift
                 ;;
             --verbose)
@@ -350,8 +360,17 @@ expand_input() {
                 extract_zip "$INPUT_PATH" "$EXPANDED_DIR"
                 ;;
             *)
-                echo "Error: Unsupported file type: $extension" >&2
-                exit 1
+                # Check if it's an executable binary
+                if [[ -x "$INPUT_PATH" ]] || [[ "$INPUT_PATH" == "${INPUT_PATH%.*}" ]]; then
+                    # It's likely a binary executable (no extension or executable permissions)
+                    input_type="binary"
+                    log "Processing binary file: $(basename "$INPUT_PATH")"
+                    mkdir -p "$EXPANDED_DIR"
+                    cp -p "$INPUT_PATH" "$EXPANDED_DIR/$(basename "$INPUT_PATH")"
+                else
+                    echo "Error: Unsupported file type: $extension" >&2
+                    exit 1
+                fi
                 ;;
         esac
     elif [[ -d "$INPUT_PATH" ]]; then
@@ -375,8 +394,16 @@ expand_input() {
 # Prepare package root
 prepare_package_root() {
     log "Preparing package root"
-    
+
     ROOT_DIR="$WORK_DIR/root"
+
+    # If payload-free, skip copying files
+    if [[ "$PAYLOAD_FREE" == true ]]; then
+        log "Building payload-free package (scripts only)"
+        mkdir -p "$ROOT_DIR"
+        return
+    fi
+
     local install_dir="$ROOT_DIR$INSTALL_LOCATION"
     mkdir -p "$install_dir"
     
@@ -398,25 +425,57 @@ prepare_package_root() {
             copy_content "$app_path" "$install_dir/$(basename "$app_path")"
         fi
     else
-        # Check if this looks like CLI tools
+        # Check what type of content we have in the expanded directory
+        local content_count=$(find "$EXPANDED_DIR" -maxdepth 1 -mindepth 1 | wc -l | tr -d ' ')
+        local has_app_bundle=false
         local has_executables=false
-        if find "$EXPANDED_DIR" -type f -perm +111 | grep -q .; then
+        
+        # Check for app bundles anywhere in the expanded content
+        if find "$EXPANDED_DIR" -name "*.app" -type d | grep -q .; then
+            has_app_bundle=true
+            local app_path=$(find "$EXPANDED_DIR" -name "*.app" -type d | head -1)
+            log "Found app bundle in expanded content: $(basename "$app_path")"
+            copy_content "$app_path" "$install_dir/$(basename "$app_path")"
+        elif find "$EXPANDED_DIR" -type f -perm +111 | grep -q .; then
             has_executables=true
         fi
         
-        if [[ "$has_executables" == true ]] && [[ "$INSTALL_LOCATION" == "/Applications" ]]; then
-            # Likely CLI tools, use appropriate bin directory
-            local bin_path=$(detect_bin_path)
-            log "Detected CLI tools, using bin path: $bin_path"
-            INSTALL_LOCATION="$bin_path"
-            install_dir="$ROOT_DIR$INSTALL_LOCATION"
-            mkdir -p "$install_dir"
+        # If we didn't find an app bundle, handle other content types
+        if [[ "$has_app_bundle" == false ]]; then
+            if [[ "$has_executables" == true ]] && [[ "$INSTALL_LOCATION" == "/Applications" ]]; then
+                # Likely CLI tools, use appropriate bin directory
+                local bin_path=$(detect_bin_path)
+                log "Detected CLI tools, using bin path: $bin_path"
+                INSTALL_LOCATION="$bin_path"
+                install_dir="$ROOT_DIR$INSTALL_LOCATION"
+                mkdir -p "$install_dir"
+            fi
+            
+            # Copy all content - handles single files, multiple files, or directories
+            log "Copying all expanded content to install location"
+            if [[ "$content_count" -eq 1 ]]; then
+                # Single item - could be a file or directory
+                local single_item=$(find "$EXPANDED_DIR" -maxdepth 1 -mindepth 1 | head -1)
+                if [[ -f "$single_item" ]]; then
+                    # Single file - copy with its name
+                    cp -p "$single_item" "$install_dir/$(basename "$single_item")"
+                else
+                    # Single directory - copy its contents or the directory itself based on context
+                    copy_content "$single_item" "$install_dir" true
+                fi
+            else
+                # Multiple items - copy all content
+                copy_content "$EXPANDED_DIR" "$install_dir" true
+            fi
         fi
-        
-        # Copy all content
-        copy_content "$EXPANDED_DIR" "$install_dir" true
     fi
-    
+
+    # Remove extended attributes if requested
+    if [[ "$REMOVE_XATTR" == true ]] && [[ -d "$ROOT_DIR" ]]; then
+        log "Removing extended attributes from payload..."
+        xattr -cr "$ROOT_DIR" 2>/dev/null || true
+    fi
+
     log "Package root prepared at: $ROOT_DIR"
 }
 
@@ -455,11 +514,18 @@ build_package() {
     local component_pkg="$WORK_DIR/component.pkg"
     
     # Build component package with pkgbuild
-    local pkgbuild_args=(
-        --root "$ROOT_DIR"
+    local pkgbuild_args=()
+
+    if [[ "$PAYLOAD_FREE" == true ]]; then
+        pkgbuild_args+=(--nopayload)
+    else
+        pkgbuild_args+=(--root "$ROOT_DIR")
+        pkgbuild_args+=(--install-location "/")
+    fi
+
+    pkgbuild_args+=(
         --identifier "$IDENTIFIER"
         --version "$VERSION_STRING"
-        --install-location "/"
     )
     
     if [[ -n "$SCRIPTS_DIR" ]]; then
@@ -476,13 +542,15 @@ build_package() {
     # Build distribution package with productbuild
     local productbuild_args=(
         --package "$component_pkg"
+        --identifier "$IDENTIFIER"
+        --version "$VERSION_STRING"
     )
-    
+
     if [[ -n "$SIGN_IDENTITY" ]]; then
         log "Signing package with identity: $SIGN_IDENTITY"
         productbuild_args+=(--sign "$SIGN_IDENTITY")
     fi
-    
+
     productbuild_args+=("$OUTPUT_PATH")
     
     log "Running productbuild..."

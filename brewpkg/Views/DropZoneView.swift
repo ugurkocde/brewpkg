@@ -28,9 +28,9 @@ struct DropZoneView: View {
     var dropZoneSubtitle: String {
         switch packageMode {
         case .application:
-            return "DMG, ZIP, App Bundle, or Directory"
+            return "DMG, ZIP, App Bundle, Binary, or Directory"
         case .fileDeployment:
-            return "Files, Folders, Scripts, or Configs"
+            return "Any Files, Folders, Scripts, or Configs"
         }
     }
     
@@ -144,7 +144,10 @@ struct DropZoneView: View {
             UTType(filenameExtension: "dmg") ?? .data,
             UTType(filenameExtension: "zip") ?? .archive,
             UTType(filenameExtension: "app") ?? .applicationBundle,
-            .folder
+            .folder,
+            .executable,
+            .unixExecutable,
+            .item  // Allow any file type
         ]
         
         if panel.runModal() == .OK {
@@ -179,11 +182,28 @@ struct DropZoneView: View {
     private func isValidInput(_ url: URL) -> Bool {
         let validExtensions = ["dmg", "zip", "app"]
         
+        // Allow directories
         if url.hasDirectoryPath {
             return true
         }
         
-        return validExtensions.contains(url.pathExtension.lowercased())
+        // Allow files with valid extensions
+        if validExtensions.contains(url.pathExtension.lowercased()) {
+            return true
+        }
+        
+        // Allow executable files (binaries)
+        let fileManager = FileManager.default
+        if fileManager.isExecutableFile(atPath: url.path) {
+            return true
+        }
+        
+        // In file deployment mode, allow any file
+        if packageMode == .fileDeployment {
+            return true
+        }
+        
+        return false
     }
 }
 

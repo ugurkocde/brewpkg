@@ -12,6 +12,7 @@ import Sparkle
 struct ContentView: View {
     let updaterController: SPUStandardUpdaterController
     @ObservedObject var updaterDelegate: UpdaterDelegate
+    @Binding var windowTitle: String
     @State private var inputURL: URL?
     @State private var fileInfo: FileInfo?
     @State private var configuration = PackageConfiguration()
@@ -31,10 +32,12 @@ struct ContentView: View {
     @State private var buildOptionsExpanded = true
     @State private var isCheckingForUpdates = false
     @State private var updateCheckMessage = ""
-    
-    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate = UpdaterDelegate()) {
+    @State private var showingChangelog = false
+
+    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate = UpdaterDelegate(), windowTitle: Binding<String> = .constant("brewpkg")) {
         self.updaterController = updaterController
         self.updaterDelegate = updaterDelegate
+        self._windowTitle = windowTitle
     }
     
     var canBuild: Bool {
@@ -62,6 +65,7 @@ struct ContentView: View {
                     .onChange(of: fileInfo) { info in
                         if let info = info {
                             autofillConfiguration(from: info)
+                            updateWindowTitle()
                         }
                     }
                     
@@ -76,9 +80,29 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: Spacing.sm) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
-                                    .font(Typography.caption())
-                                    .foregroundColor(.secondaryText)
+                                HStack(spacing: 8) {
+                                    Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
+                                        .font(Typography.caption())
+                                        .foregroundColor(.secondaryText)
+
+                                    Button(action: { showingChangelog = true }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "sparkles")
+                                                .font(.caption)
+                                            Text("What's New")
+                                                .font(Typography.caption())
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(.primaryAction)
+                                    .onHover { isHovering in
+                                        if isHovering {
+                                            NSCursor.pointingHand.push()
+                                        } else {
+                                            NSCursor.pop()
+                                        }
+                                    }
+                                }
                                 
                                 if isCheckingForUpdates {
                                     HStack(spacing: 4) {
@@ -263,6 +287,9 @@ struct ContentView: View {
                             selectedTemplate: $selectedTemplate,
                             configuration: $configuration
                         )
+                        .onChange(of: selectedTemplate) { _ in
+                            updateWindowTitle()
+                        }
                         
                         // Package Information
                         ConfigurationSection(title: "Package Information", icon: "shippingbox.fill", isExpanded: $packageInfoExpanded) {
@@ -310,9 +337,17 @@ struct ContentView: View {
                                 
                                 if configuration.includePreinstall {
                                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                                        Text("Preinstall Script:")
-                                            .font(Typography.caption())
-                                            .foregroundColor(.secondaryText)
+                                        HStack {
+                                            Text("Preinstall Script:")
+                                                .font(Typography.caption())
+                                                .foregroundColor(.secondaryText)
+                                            Spacer()
+                                            Button(action: loadPreinstallScript) {
+                                                Label("Load from file", systemImage: "doc.text")
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .font(.caption)
+                                        }
                                         TextEditor(text: $configuration.preinstallScript)
                                             .font(.system(.caption, design: .monospaced))
                                             .frame(height: 100)
@@ -327,9 +362,17 @@ struct ContentView: View {
                                 
                                 if configuration.includePostinstall {
                                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                                        Text("Postinstall Script:")
-                                            .font(Typography.caption())
-                                            .foregroundColor(.secondaryText)
+                                        HStack {
+                                            Text("Postinstall Script:")
+                                                .font(Typography.caption())
+                                                .foregroundColor(.secondaryText)
+                                            Spacer()
+                                            Button(action: loadPostinstallScript) {
+                                                Label("Load from file", systemImage: "doc.text")
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .font(.caption)
+                                        }
                                         TextEditor(text: $configuration.postinstallScript)
                                             .font(.system(.caption, design: .monospaced))
                                             .frame(height: 100)
@@ -341,11 +384,18 @@ struct ContentView: View {
                                 }
                                 
                                 Toggle("Preserve file permissions", isOn: $configuration.preservePermissions)
-                                
+
+                                Toggle("Remove extended attributes (quarantine, etc.)", isOn: $configuration.removeExtendedAttributes)
+                                    .help("Remove extended attributes like com.apple.quarantine before packaging")
+
+                                Toggle("Build payload-free package (scripts only)", isOn: $configuration.payloadFree)
+                                    .help("Create a package with only scripts, no payload files")
+                                    .disabled(!configuration.includePreinstall && !configuration.includePostinstall)
+
                                 if configuration.packageMode == .fileDeployment {
                                     Divider()
                                         .padding(.vertical, Spacing.xs)
-                                    
+
                                     Toggle("Create intermediate folders if needed", isOn: $configuration.createIntermediateFolders)
                                         .help("Automatically create parent directories if they don't exist")
                                 }
@@ -418,6 +468,9 @@ struct ContentView: View {
             Button("OK") { }
         } message: {
             Text(alertMessage)
+        }
+        .sheet(isPresented: $showingChangelog) {
+            ChangelogView()
         }
         .onAppear {
             signingIdentityManager.loadIdentities()
@@ -512,6 +565,7 @@ struct ContentView: View {
         buildStatus = nil
         buildEngine.reset()
         showLogExpanded = false
+        windowTitle = "brewpkg"
     }
     
     private func checkForUpdates() {
@@ -526,6 +580,75 @@ struct ContentView: View {
             isCheckingForUpdates = false
             // Don't show "up to date" message - let Sparkle handle all feedback
             updateCheckMessage = ""
+        }
+    }
+    
+    private func loadPreinstallScript() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Preinstall Script"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            .shellScript,
+            .text,
+            .plainText,
+            .item  // Allow any file type
+        ]
+        
+        if panel.runModal() == .OK {
+            if let url = panel.url {
+                do {
+                    let scriptContent = try String(contentsOf: url, encoding: .utf8)
+                    configuration.preinstallScript = scriptContent
+                } catch {
+                    // Handle error silently or show an alert if needed
+                    print("Error loading preinstall script: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func loadPostinstallScript() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Postinstall Script"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            .shellScript,
+            .text,
+            .plainText,
+            .item  // Allow any file type
+        ]
+        
+        if panel.runModal() == .OK {
+            if let url = panel.url {
+                do {
+                    let scriptContent = try String(contentsOf: url, encoding: .utf8)
+                    configuration.postinstallScript = scriptContent
+                } catch {
+                    // Handle error silently or show an alert if needed
+                    print("Error loading postinstall script: \(error)")
+                }
+            }
+        }
+    }
+
+    private func updateWindowTitle() {
+        if let template = selectedTemplate {
+            windowTitle = "brewpkg - \(template.name)"
+        } else if let fileInfo = fileInfo {
+            if let appName = fileInfo.appName {
+                windowTitle = "brewpkg - \(appName)"
+            } else if let binaryName = fileInfo.binaryName {
+                windowTitle = "brewpkg - \(binaryName)"
+            } else {
+                let filename = fileInfo.url.lastPathComponent
+                windowTitle = "brewpkg - \(filename)"
+            }
+        } else {
+            windowTitle = "brewpkg"
         }
     }
 }
@@ -1150,6 +1273,6 @@ class SigningIdentityManager: ObservableObject {
 }
 
 #Preview {
-    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate())
+    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate(), windowTitle: .constant("brewpkg"))
         .frame(width: 1000, height: 800)
 }

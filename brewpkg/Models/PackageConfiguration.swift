@@ -51,7 +51,9 @@ struct PackageConfiguration: Codable, Equatable, Hashable {
     var createIntermediateFolders: Bool
     var preinstallScript: String
     var postinstallScript: String
-    
+    var payloadFree: Bool
+    var removeExtendedAttributes: Bool
+
     init(
         identifier: String = "",
         version: String = "1.0",
@@ -59,11 +61,13 @@ struct PackageConfiguration: Codable, Equatable, Hashable {
         signingIdentity: String? = nil,
         includePreinstall: Bool = false,
         includePostinstall: Bool = false,
-        preservePermissions: Bool = false,
+        preservePermissions: Bool = true,
         packageMode: PackageMode = .application,
         createIntermediateFolders: Bool = false,
         preinstallScript: String = "#!/bin/bash\n# Pre-installation script\necho \"Preparing installation...\"\nexit 0",
-        postinstallScript: String = "#!/bin/bash\n# Post-installation script\necho \"Installation complete.\"\nexit 0"
+        postinstallScript: String = "#!/bin/bash\n# Post-installation script\necho \"Installation complete.\"\nexit 0",
+        payloadFree: Bool = false,
+        removeExtendedAttributes: Bool = false
     ) {
         self.identifier = identifier
         self.version = version
@@ -76,6 +80,8 @@ struct PackageConfiguration: Codable, Equatable, Hashable {
         self.createIntermediateFolders = createIntermediateFolders
         self.preinstallScript = preinstallScript
         self.postinstallScript = postinstallScript
+        self.payloadFree = payloadFree
+        self.removeExtendedAttributes = removeExtendedAttributes
     }
     
     var isValid: Bool {
@@ -133,12 +139,20 @@ extension PackageConfiguration {
         
         if packageMode == .fileDeployment {
             args.append("--file-deployment-mode")
-            
+
             if createIntermediateFolders {
                 args.append("--create-intermediate-folders")
             }
         }
-        
+
+        if payloadFree {
+            args.append("--nopayload")
+        }
+
+        if removeExtendedAttributes {
+            args.append("--remove-xattr")
+        }
+
         args.append("--verbose")
         
         return args
