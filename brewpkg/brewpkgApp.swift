@@ -42,22 +42,23 @@ class UpdaterDelegate: NSObject, SPUUpdaterDelegate, ObservableObject {
 struct brewpkgApp: App {
     @State private var showSplash = true
     @StateObject private var updaterDelegate = UpdaterDelegate()
-    
+    @State private var windowTitle = "brewpkg"
+
     private let updaterController: SPUStandardUpdaterController
-    
+
     init() {
         let delegate = UpdaterDelegate()
         updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: delegate, userDriverDelegate: nil)
         _updaterDelegate = StateObject(wrappedValue: delegate)
     }
-    
+
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(windowTitle) {
             ZStack {
-                ContentView(updaterController: updaterController, updaterDelegate: updaterDelegate)
+                ContentView(updaterController: updaterController, updaterDelegate: updaterDelegate, windowTitle: $windowTitle)
                     .opacity(showSplash ? 0 : 1)
                     .animation(.easeIn(duration: 0.5), value: showSplash)
-                
+
                 if showSplash {
                     SplashScreenView()
                         .transition(.opacity)

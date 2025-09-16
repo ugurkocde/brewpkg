@@ -16,6 +16,7 @@ struct FileInfo: Equatable {
     let binaryName: String?
     let version: String?
     let appIcon: NSImage?
+    var appBundleURL: URL?
     
     enum FileType: Equatable {
         case diskImage
@@ -53,6 +54,13 @@ struct FileInfo: Equatable {
     }
     
     var suggestedIdentifier: String {
+        // First try to get the actual bundle identifier if it's an app
+        if let appBundleURL = appBundleURL ?? (type == .appBundle ? url : nil),
+           let bundleId = getBundleIdentifier(at: appBundleURL) {
+            return bundleId
+        }
+
+        // Fall back to generating one
         if let appName = appName {
             let cleanName = appName
                 .replacingOccurrences(of: " ", with: "")
@@ -69,6 +77,18 @@ struct FileInfo: Equatable {
             return "com.company.\(name)"
         }
     }
+
+    private func getBundleIdentifier(at appURL: URL) -> String? {
+        let infoPlistURL = appURL.appendingPathComponent("Contents/Info.plist")
+
+        guard let plistData = try? Data(contentsOf: infoPlistURL),
+              let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any],
+              let bundleId = plist["CFBundleIdentifier"] as? String else {
+            return nil
+        }
+
+        return bundleId
+    }
 }
 
 class FileHelper {
@@ -80,12 +100,13 @@ class FileHelper {
         var binaryName: String?
         var version: String?
         var appIcon: NSImage?
-        
+        var appBundleURL: URL?
+
         // Get file size
         if let attributes = try? fileManager.attributesOfItem(atPath: url.path) {
             size = attributes[.size] as? Int64 ?? 0
         }
-        
+
         // Determine file type
         if url.hasDirectoryPath {
             if url.pathExtension == "app" {
@@ -93,6 +114,7 @@ class FileHelper {
                 appName = url.lastPathComponent
                 version = getAppVersion(at: url)
                 appIcon = getAppIcon(at: url)
+                appBundleURL = url
             } else {
                 type = .directory
                 // Check for app bundle inside
@@ -100,6 +122,7 @@ class FileHelper {
                     appName = app.lastPathComponent
                     version = getAppVersion(at: app)
                     appIcon = getAppIcon(at: app)
+                    appBundleURL = app
                 }
                 // Check for binaries
                 if let binary = findExecutable(in: url) {
@@ -122,13 +145,14 @@ class FileHelper {
                 type = .unknown
             }
         }
-        
+
         // Try to extract version from filename if not found
         if version == nil {
             version = extractVersionFromFilename(url.lastPathComponent)
         }
-        
-        return FileInfo(
+
+        // Create FileInfo with proper app bundle URL for identifier extraction
+        var fileInfo = FileInfo(
             url: url,
             size: size,
             type: type,
@@ -137,6 +161,13 @@ class FileHelper {
             version: version,
             appIcon: appIcon
         )
+
+        // Store the app bundle URL for bundle identifier extraction
+        if let appBundleURL = appBundleURL {
+            fileInfo.appBundleURL = appBundleURL
+        }
+
+        return fileInfo
     }
     
     private static func getAppVersion(at appURL: URL) -> String? {

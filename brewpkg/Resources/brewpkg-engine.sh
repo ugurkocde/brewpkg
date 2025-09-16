@@ -18,6 +18,8 @@ PRESERVE_PERMISSIONS=false
 VERBOSE=false
 FILE_DEPLOYMENT_MODE=false
 CREATE_INTERMEDIATE_FOLDERS=false
+PAYLOAD_FREE=false
+REMOVE_XATTR=false
 
 # Temporary directories
 WORK_DIR=""
@@ -126,6 +128,14 @@ parse_args() {
                 ;;
             --create-intermediate-folders)
                 CREATE_INTERMEDIATE_FOLDERS=true
+                shift
+                ;;
+            --nopayload)
+                PAYLOAD_FREE=true
+                shift
+                ;;
+            --remove-xattr)
+                REMOVE_XATTR=true
                 shift
                 ;;
             --verbose)
@@ -384,8 +394,16 @@ expand_input() {
 # Prepare package root
 prepare_package_root() {
     log "Preparing package root"
-    
+
     ROOT_DIR="$WORK_DIR/root"
+
+    # If payload-free, skip copying files
+    if [[ "$PAYLOAD_FREE" == true ]]; then
+        log "Building payload-free package (scripts only)"
+        mkdir -p "$ROOT_DIR"
+        return
+    fi
+
     local install_dir="$ROOT_DIR$INSTALL_LOCATION"
     mkdir -p "$install_dir"
     
@@ -451,7 +469,13 @@ prepare_package_root() {
             fi
         fi
     fi
-    
+
+    # Remove extended attributes if requested
+    if [[ "$REMOVE_XATTR" == true ]] && [[ -d "$ROOT_DIR" ]]; then
+        log "Removing extended attributes from payload..."
+        xattr -cr "$ROOT_DIR" 2>/dev/null || true
+    fi
+
     log "Package root prepared at: $ROOT_DIR"
 }
 
@@ -490,11 +514,18 @@ build_package() {
     local component_pkg="$WORK_DIR/component.pkg"
     
     # Build component package with pkgbuild
-    local pkgbuild_args=(
-        --root "$ROOT_DIR"
+    local pkgbuild_args=()
+
+    if [[ "$PAYLOAD_FREE" == true ]]; then
+        pkgbuild_args+=(--nopayload)
+    else
+        pkgbuild_args+=(--root "$ROOT_DIR")
+        pkgbuild_args+=(--install-location "/")
+    fi
+
+    pkgbuild_args+=(
         --identifier "$IDENTIFIER"
         --version "$VERSION_STRING"
-        --install-location "/"
     )
     
     if [[ -n "$SCRIPTS_DIR" ]]; then
@@ -511,13 +542,15 @@ build_package() {
     # Build distribution package with productbuild
     local productbuild_args=(
         --package "$component_pkg"
+        --identifier "$IDENTIFIER"
+        --version "$VERSION_STRING"
     )
-    
+
     if [[ -n "$SIGN_IDENTITY" ]]; then
         log "Signing package with identity: $SIGN_IDENTITY"
         productbuild_args+=(--sign "$SIGN_IDENTITY")
     fi
-    
+
     productbuild_args+=("$OUTPUT_PATH")
     
     log "Running productbuild..."

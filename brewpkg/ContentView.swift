@@ -12,6 +12,7 @@ import Sparkle
 struct ContentView: View {
     let updaterController: SPUStandardUpdaterController
     @ObservedObject var updaterDelegate: UpdaterDelegate
+    @Binding var windowTitle: String
     @State private var inputURL: URL?
     @State private var fileInfo: FileInfo?
     @State private var configuration = PackageConfiguration()
@@ -31,10 +32,11 @@ struct ContentView: View {
     @State private var buildOptionsExpanded = true
     @State private var isCheckingForUpdates = false
     @State private var updateCheckMessage = ""
-    
-    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate = UpdaterDelegate()) {
+
+    init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate = UpdaterDelegate(), windowTitle: Binding<String> = .constant("brewpkg")) {
         self.updaterController = updaterController
         self.updaterDelegate = updaterDelegate
+        self._windowTitle = windowTitle
     }
     
     var canBuild: Bool {
@@ -62,6 +64,7 @@ struct ContentView: View {
                     .onChange(of: fileInfo) { info in
                         if let info = info {
                             autofillConfiguration(from: info)
+                            updateWindowTitle()
                         }
                     }
                     
@@ -263,6 +266,9 @@ struct ContentView: View {
                             selectedTemplate: $selectedTemplate,
                             configuration: $configuration
                         )
+                        .onChange(of: selectedTemplate) { _ in
+                            updateWindowTitle()
+                        }
                         
                         // Package Information
                         ConfigurationSection(title: "Package Information", icon: "shippingbox.fill", isExpanded: $packageInfoExpanded) {
@@ -357,11 +363,18 @@ struct ContentView: View {
                                 }
                                 
                                 Toggle("Preserve file permissions", isOn: $configuration.preservePermissions)
-                                
+
+                                Toggle("Remove extended attributes (quarantine, etc.)", isOn: $configuration.removeExtendedAttributes)
+                                    .help("Remove extended attributes like com.apple.quarantine before packaging")
+
+                                Toggle("Build payload-free package (scripts only)", isOn: $configuration.payloadFree)
+                                    .help("Create a package with only scripts, no payload files")
+                                    .disabled(!configuration.includePreinstall && !configuration.includePostinstall)
+
                                 if configuration.packageMode == .fileDeployment {
                                     Divider()
                                         .padding(.vertical, Spacing.xs)
-                                    
+
                                     Toggle("Create intermediate folders if needed", isOn: $configuration.createIntermediateFolders)
                                         .help("Automatically create parent directories if they don't exist")
                                 }
@@ -528,6 +541,7 @@ struct ContentView: View {
         buildStatus = nil
         buildEngine.reset()
         showLogExpanded = false
+        windowTitle = "brewpkg"
     }
     
     private func checkForUpdates() {
@@ -594,6 +608,23 @@ struct ContentView: View {
                     print("Error loading postinstall script: \(error)")
                 }
             }
+        }
+    }
+
+    private func updateWindowTitle() {
+        if let template = selectedTemplate {
+            windowTitle = "brewpkg - \(template.name)"
+        } else if let fileInfo = fileInfo {
+            if let appName = fileInfo.appName {
+                windowTitle = "brewpkg - \(appName)"
+            } else if let binaryName = fileInfo.binaryName {
+                windowTitle = "brewpkg - \(binaryName)"
+            } else {
+                let filename = fileInfo.url.lastPathComponent
+                windowTitle = "brewpkg - \(filename)"
+            }
+        } else {
+            windowTitle = "brewpkg"
         }
     }
 }
@@ -1218,6 +1249,6 @@ class SigningIdentityManager: ObservableObject {
 }
 
 #Preview {
-    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate())
+    ContentView(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate(), windowTitle: .constant("brewpkg"))
         .frame(width: 1000, height: 800)
 }
