@@ -32,6 +32,7 @@ struct ContentView: View {
     @State private var buildOptionsExpanded = true
     @State private var isCheckingForUpdates = false
     @State private var updateCheckMessage = ""
+    @State private var showingChangelog = false
 
     init(updaterController: SPUStandardUpdaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil), updaterDelegate: UpdaterDelegate = UpdaterDelegate(), windowTitle: Binding<String> = .constant("brewpkg")) {
         self.updaterController = updaterController
@@ -79,9 +80,29 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: Spacing.sm) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
-                                    .font(Typography.caption())
-                                    .foregroundColor(.secondaryText)
+                                HStack(spacing: 8) {
+                                    Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
+                                        .font(Typography.caption())
+                                        .foregroundColor(.secondaryText)
+
+                                    Button(action: { showingChangelog = true }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "sparkles")
+                                                .font(.caption)
+                                            Text("What's New")
+                                                .font(Typography.caption())
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(.primaryAction)
+                                    .onHover { isHovering in
+                                        if isHovering {
+                                            NSCursor.pointingHand.push()
+                                        } else {
+                                            NSCursor.pop()
+                                        }
+                                    }
+                                }
                                 
                                 if isCheckingForUpdates {
                                     HStack(spacing: 4) {
@@ -447,6 +468,9 @@ struct ContentView: View {
             Button("OK") { }
         } message: {
             Text(alertMessage)
+        }
+        .sheet(isPresented: $showingChangelog) {
+            ChangelogView()
         }
         .onAppear {
             signingIdentityManager.loadIdentities()
