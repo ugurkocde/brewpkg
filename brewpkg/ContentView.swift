@@ -309,9 +309,13 @@ struct ContentView: View {
                                     }
                                     inputURL = nil
                                     fileInfo = nil
-                                } else if configuration.payloadFree {
-                                    // Reset payloadFree when switching away from script execution
-                                    configuration.payloadFree = false
+                                } else {
+                                    // Reset script execution settings when switching away
+                                    if configuration.payloadFree {
+                                        configuration.payloadFree = false
+                                        configuration.includePreinstall = false
+                                        configuration.includePostinstall = false
+                                    }
                                 }
                             }
                         
@@ -627,6 +631,7 @@ struct ContentView: View {
         panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.showsTagField = false
+        panel.treatsFilePackagesAsDirectories = false
 
         if panel.runModal() == .OK {
             inputURL = panel.url
@@ -1351,13 +1356,14 @@ struct PackageModeSelector: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 300)
-                
+                .frame(minWidth: 400, maxWidth: 500)
+                .controlSize(.large)
+
                 // Info button
                 Button(action: { showingInfo.toggle() }) {
                     Image(systemName: "info.circle")
                         .foregroundColor(.secondaryText)
-                        .font(.footnote)
+                        .font(.body)
                 }
                 .buttonStyle(.plain)
                 .help("Learn more about package types")

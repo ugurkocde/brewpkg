@@ -89,7 +89,9 @@ struct brewpkgApp: App {
                     }
                 }
             }
+            .frame(minWidth: 1200, minHeight: 750)
         }
+        .defaultSize(width: 1300, height: 800)
         .commands {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)

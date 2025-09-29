@@ -184,6 +184,7 @@ struct DropZoneView: View {
         panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.showsTagField = false
+        panel.treatsFilePackagesAsDirectories = false
 
         if panel.runModal() == .OK {
             inputURL = panel.url
