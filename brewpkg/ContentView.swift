@@ -62,7 +62,7 @@ struct ContentView: View {
                         .padding(.top, Spacing.lg)
                     
                     DropZoneView(
-                        inputURL: $inputURL, 
+                        inputURL: $inputURL,
                         fileInfo: $fileInfo,
                         packageMode: configuration.packageMode
                     )
@@ -72,7 +72,22 @@ struct ContentView: View {
                             updateWindowTitle()
                         }
                     }
-                    
+
+                    // Browse Installed Apps Button
+                    if configuration.packageMode != .scriptExecution && inputURL == nil {
+                        Button(action: browseInstalledApps) {
+                            HStack(spacing: Spacing.sm) {
+                                Image(systemName: "folder.badge.gearshape")
+                                    .font(.body)
+                                Text("Browse Installed Applications")
+                                    .font(Typography.body())
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .help("Select an application from /Applications to package")
+                    }
+
                     // File Preview
                     if let fileInfo = fileInfo {
                         FilePreviewCard(fileInfo: fileInfo)
@@ -598,7 +613,29 @@ struct ContentView: View {
         showLogExpanded = false
         windowTitle = "brewpkg"
     }
-    
+
+    private func browseInstalledApps() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Application to Package"
+        panel.message = "Choose an installed application from /Applications or other locations"
+        panel.showsResizeIndicator = true
+        panel.showsHiddenFiles = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.showsTagField = false
+
+        if panel.runModal() == .OK {
+            inputURL = panel.url
+            if let url = panel.url {
+                fileInfo = FileHelper.analyzeFile(at: url)
+            }
+        }
+    }
+
     private func checkForUpdates() {
         isCheckingForUpdates = true
         updateCheckMessage = ""
