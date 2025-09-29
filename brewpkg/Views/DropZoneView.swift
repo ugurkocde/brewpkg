@@ -22,24 +22,30 @@ struct DropZoneView: View {
             return "Drop application here"
         case .fileDeployment:
             return "Drop files to deploy"
+        case .scriptExecution:
+            return "No input needed"
         }
     }
-    
+
     var dropZoneSubtitle: String {
         switch packageMode {
         case .application:
             return "DMG, ZIP, App Bundle, Binary, or Directory"
         case .fileDeployment:
             return "Any Files, Folders, Scripts, or Configs"
+        case .scriptExecution:
+            return "Scripts-only package (payload-free)"
         }
     }
-    
+
     var dropZoneIcon: String {
         switch packageMode {
         case .application:
             return inputURL != nil ? "checkmark.seal.fill" : "arrow.down.doc.fill"
         case .fileDeployment:
             return inputURL != nil ? "checkmark.circle.fill" : "folder.badge.plus"
+        case .scriptExecution:
+            return "checkmark.circle.fill"
         }
     }
     
@@ -83,16 +89,18 @@ struct DropZoneView: View {
                 Text(inputURL != nil ? "Content Selected" : dropZoneTitle)
                     .font(Typography.headline())
                     .foregroundColor(.primary)
-                
-                if inputURL == nil {
+
+                if inputURL == nil || packageMode == .scriptExecution {
                     Text(dropZoneSubtitle)
                         .font(Typography.caption())
                         .foregroundColor(.secondaryText)
-                    
-                    Text("or click to browse")
-                        .font(Typography.footnote())
-                        .foregroundColor(.tertiaryText)
-                        .padding(.top, 2)
+
+                    if packageMode != .scriptExecution {
+                        Text("or click to browse")
+                            .font(Typography.footnote())
+                            .foregroundColor(.tertiaryText)
+                            .padding(.top, 2)
+                    }
                 }
             }
         }
@@ -106,12 +114,12 @@ struct DropZoneView: View {
                         .strokeBorder(
                             style: StrokeStyle(
                                 lineWidth: isDragOver ? 2 : 1.5,
-                                dash: isDragOver ? [] : [10, 5]
+                                dash: (isDragOver || packageMode == .scriptExecution) ? [] : [10, 5]
                             )
                         )
                         .foregroundColor(
-                            isDragOver ? Color.primaryAction : 
-                            (inputURL != nil ? Color.successGreen.opacity(0.5) : Color.separatorColor)
+                            isDragOver ? Color.primaryAction :
+                            (inputURL != nil || packageMode == .scriptExecution ? Color.successGreen.opacity(0.5) : Color.separatorColor)
                         )
                 )
         )
@@ -124,10 +132,15 @@ struct DropZoneView: View {
             y: 4
         )
         .onTapGesture {
-            selectFile()
+            if packageMode != .scriptExecution {
+                selectFile()
+            }
         }
         .onDrop(of: [.fileURL], isTargeted: $isDragOver) { providers in
-            handleDrop(providers: providers)
+            if packageMode != .scriptExecution {
+                return handleDrop(providers: providers)
+            }
+            return false
         }
     }
     

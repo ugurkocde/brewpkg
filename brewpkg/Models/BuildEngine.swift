@@ -56,15 +56,15 @@ class BuildEngine: ObservableObject {
     private var errorPipe: Pipe?
     private var cancellables = Set<AnyCancellable>()
     
-    func build(configuration: PackageConfiguration, inputURL: URL, outputURL: URL) async throws {
+    func build(configuration: PackageConfiguration, inputURL: URL?, outputURL: URL) async throws {
         if case .building = state { return }
-        
+
         await MainActor.run {
             self.state = .building
             self.logOutput = ""
             self.progress = 0.0
         }
-        
+
         do {
             try await performBuild(configuration: configuration, inputURL: inputURL, outputURL: outputURL)
             await MainActor.run {
@@ -79,7 +79,7 @@ class BuildEngine: ObservableObject {
         }
     }
     
-    private func performBuild(configuration: PackageConfiguration, inputURL: URL, outputURL: URL) async throws {
+    private func performBuild(configuration: PackageConfiguration, inputURL: URL?, outputURL: URL) async throws {
         // Find the engine script
         guard let engineURL = Bundle.main.url(forResource: "brewpkg-engine", withExtension: "sh") else {
             throw BuildError.engineNotFound
@@ -112,8 +112,11 @@ class BuildEngine: ObservableObject {
         // Create process
         let task = Process()
         task.executableURL = tempEngineURL
+
+        // Use a placeholder input path for payload-free packages
+        let inputPath = inputURL?.path ?? "/tmp/no-payload"
         var args = configuration.buildArguments(
-            inputPath: inputURL.path,
+            inputPath: inputPath,
             outputPath: outputURL.path
         )
         
