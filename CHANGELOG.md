@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.4.0] - 2025-09-29
+
+### Added
+
+- **Browse Installed Applications** - New button to directly select and package applications from /Applications without needing original DMG/ZIP installers
+- **Script Execution mode** - New package mode for creating payload-free packages with only scripts, ideal for Intune Company Portal deployments
+- **Empty package support** - Create packages with only a bundle identifier and scripts, no input files required
+- **Intune-focused templates** - Added three ready-to-use templates:
+  - **Office Reinstall** - Triggers Office application reinstallation via Intune sync
+  - **Script Runner** - Generic template for custom script execution
+  - **System Maintenance** - Performs system cleanup tasks (cache clearing, DNS flush)
+- **Auto-configuration for script mode** - Switching to Script Execution mode automatically enables payload-free packaging and postinstall script
+
+### Changed
+
+- Drop zone hint text updated to inform users about browse button for installed apps
+- Drop zone now shows "No input needed" state when in Script Execution mode
+- Build validation allows package creation without input files for script-only packages
+- Package filename automatically generated from bundle identifier for script-only packages
+- Drop zone interactions (click/drag) disabled in Script Execution mode
+- Browse button only visible when no file is selected and not in Script Execution mode
+
+### Technical Improvements
+
+- Added NSOpenPanel with app-specific configuration for browsing /Applications directory
+- NSOpenPanel pre-filtered to show only .app bundles for cleaner selection experience
+- Integrated FileHelper to automatically extract bundle identifiers and versions from selected apps
+- Updated `brewpkg-engine.sh` to support optional input path with `--nopayload` flag
+- Enhanced BuildEngine to handle nil inputURL for payload-free packages
+- Added placeholder path handling for script-only package builds
+- Input file expansion now skipped for payload-free packages
+- Package mode selector with automatic workflow optimization
+
+### Use Cases
+
+- Package already-installed applications without needing original DMG/ZIP files
+- Re-package Mac App Store apps for enterprise deployment
+- Quick packaging of development builds already on disk
+- Deploy "available apps" in Intune Company Portal for user-triggered actions
+- Create self-service packages for Office reinstallation
+- Build maintenance task packages without payload files
+- Trigger system management scripts via Company Portal
+
 ## [1.3.0] - 2025-09-16
 
 ### Added

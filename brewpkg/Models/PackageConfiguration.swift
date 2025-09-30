@@ -10,31 +10,38 @@ import Foundation
 enum PackageMode: String, Codable, CaseIterable {
     case application = "application"
     case fileDeployment = "fileDeployment"
-    
+    case scriptExecution = "scriptExecution"
+
     var displayName: String {
         switch self {
         case .application:
             return "Application"
         case .fileDeployment:
             return "File Deployment"
+        case .scriptExecution:
+            return "Script Execution"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .application:
             return "app.badge"
         case .fileDeployment:
             return "folder.badge.plus"
+        case .scriptExecution:
+            return "terminal.badge.plus"
         }
     }
-    
+
     var description: String {
         switch self {
         case .application:
             return "Package apps (.app, .dmg, .zip) for standard macOS installation"
         case .fileDeployment:
             return "Deploy configuration files, scripts, or resources to specific paths on managed devices"
+        case .scriptExecution:
+            return "Execute scripts without payload - ideal for Intune Company Portal actions like Office reinstall or system maintenance"
         }
     }
 }

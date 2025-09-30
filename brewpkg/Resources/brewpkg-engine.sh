@@ -157,19 +157,22 @@ parse_args() {
         echo "Error: Package identifier is required" >&2
         exit 1
     fi
-    
-    if [[ -z "$INPUT_PATH" ]]; then
-        echo "Error: Input path is required" >&2
-        exit 1
+
+    # Input path is not required for payload-free packages
+    if [[ "$PAYLOAD_FREE" != true ]]; then
+        if [[ -z "$INPUT_PATH" ]]; then
+            echo "Error: Input path is required" >&2
+            exit 1
+        fi
+
+        if [[ ! -e "$INPUT_PATH" ]]; then
+            echo "Error: Input path does not exist: $INPUT_PATH" >&2
+            exit 1
+        fi
     fi
-    
+
     if [[ -z "$OUTPUT_PATH" ]]; then
         echo "Error: Output path is required" >&2
-        exit 1
-    fi
-    
-    if [[ ! -e "$INPUT_PATH" ]]; then
-        echo "Error: Input path does not exist: $INPUT_PATH" >&2
         exit 1
     fi
 }
@@ -562,23 +565,25 @@ build_package() {
 # Main function
 main() {
     parse_args "$@"
-    
+
     # Create working directory
     WORK_DIR=$(mktemp -d -t brewpkg)
     log "Working directory: $WORK_DIR"
-    
-    # Expand input
-    expand_input
-    
+
+    # Expand input (skip for payload-free packages)
+    if [[ "$PAYLOAD_FREE" != true ]]; then
+        expand_input
+    fi
+
     # Prepare package root
     prepare_package_root
-    
+
     # Create scripts if needed
     create_scripts
-    
+
     # Build the package
     build_package
-    
+
     log "Build completed successfully!"
 }
 

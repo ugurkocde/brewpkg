@@ -44,6 +44,10 @@ struct ContentView: View {
         if case .building = buildEngine.state {
             return false
         }
+        // Allow building without input for script execution mode
+        if configuration.packageMode == .scriptExecution {
+            return configuration.isValid && (configuration.includePreinstall || configuration.includePostinstall)
+        }
         return inputURL != nil && configuration.isValid
     }
     
@@ -58,7 +62,7 @@ struct ContentView: View {
                         .padding(.top, Spacing.lg)
                     
                     DropZoneView(
-                        inputURL: $inputURL, 
+                        inputURL: $inputURL,
                         fileInfo: $fileInfo,
                         packageMode: configuration.packageMode
                     )
@@ -68,7 +72,22 @@ struct ContentView: View {
                             updateWindowTitle()
                         }
                     }
-                    
+
+                    // Browse Installed Apps Button
+                    if configuration.packageMode != .scriptExecution && inputURL == nil {
+                        Button(action: browseInstalledApps) {
+                            HStack(spacing: Spacing.sm) {
+                                Image(systemName: "folder.badge.gearshape")
+                                    .font(.body)
+                                Text("Browse Installed Applications")
+                                    .font(Typography.body())
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .help("Select an application from /Applications to package")
+                    }
+
                     // File Preview
                     if let fileInfo = fileInfo {
                         FilePreviewCard(fileInfo: fileInfo)
@@ -281,6 +300,24 @@ struct ContentView: View {
                             onReset: resetAll
                         )
                             .padding(.top, Spacing.lg)
+                            .onChange(of: configuration.packageMode) { newMode in
+                                if newMode == .scriptExecution {
+                                    // Auto-configure for script execution mode
+                                    configuration.payloadFree = true
+                                    if !configuration.includePreinstall && !configuration.includePostinstall {
+                                        configuration.includePostinstall = true
+                                    }
+                                    inputURL = nil
+                                    fileInfo = nil
+                                } else {
+                                    // Reset script execution settings when switching away
+                                    if configuration.payloadFree {
+                                        configuration.payloadFree = false
+                                        configuration.includePreinstall = false
+                                        configuration.includePostinstall = false
+                                    }
+                                }
+                            }
                         
                         // Template Selector
                         TemplateSelector(
@@ -525,14 +562,27 @@ struct ContentView: View {
     }
     
     private func buildPackage() {
-        guard let inputURL = inputURL else { return }
-        
+        // Allow nil inputURL for script execution mode
+        if configuration.packageMode != .scriptExecution {
+            guard inputURL != nil else { return }
+        }
+
         let savePanel = NSSavePanel()
         savePanel.title = "Save Package As"
         savePanel.allowedContentTypes = [UTType(filenameExtension: "pkg") ?? .data]
-        savePanel.nameFieldStringValue = "\(inputURL.deletingPathExtension().lastPathComponent).pkg"
+
+        // Generate default filename based on identifier for script execution mode
+        let defaultName: String
+        if let inputURL = inputURL {
+            defaultName = "\(inputURL.deletingPathExtension().lastPathComponent).pkg"
+        } else {
+            // Use identifier as base name for script-only packages
+            let idParts = configuration.identifier.split(separator: ".")
+            defaultName = "\(idParts.last ?? "package").pkg"
+        }
+        savePanel.nameFieldStringValue = defaultName
         savePanel.canCreateDirectories = true
-        
+
         if savePanel.runModal() == .OK, let outputURL = savePanel.url {
             Task {
                 do {
@@ -541,7 +591,7 @@ struct ContentView: View {
                         inputURL: inputURL,
                         outputURL: outputURL
                     )
-                    
+
                     await MainActor.run {
                         self.outputPackageURL = outputURL
                     }
@@ -567,7 +617,30 @@ struct ContentView: View {
         showLogExpanded = false
         windowTitle = "brewpkg"
     }
-    
+
+    private func browseInstalledApps() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Application to Package"
+        panel.message = "Choose an installed application from /Applications or other locations"
+        panel.showsResizeIndicator = true
+        panel.showsHiddenFiles = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.showsTagField = false
+        panel.treatsFilePackagesAsDirectories = false
+
+        if panel.runModal() == .OK {
+            inputURL = panel.url
+            if let url = panel.url {
+                fileInfo = FileHelper.analyzeFile(at: url)
+            }
+        }
+    }
+
     private func checkForUpdates() {
         isCheckingForUpdates = true
         updateCheckMessage = ""
@@ -1001,6 +1074,103 @@ struct TemplateSelector: View {
                 packageMode: .fileDeployment,
                 createIntermediateFolders: true
             )
+        ),
+        PackageTemplate(
+            name: "Office Reinstall",
+            icon: "arrow.clockwise.circle.fill",
+            configuration: PackageConfiguration(
+                identifier: "com.company.office.reinstall",
+                version: "1.0",
+                installLocation: "/tmp",
+                includePostinstall: true,
+                packageMode: .scriptExecution,
+                postinstallScript: """
+#!/bin/bash
+# Office Reinstall Script for Intune Company Portal
+# This package can be deployed as an available app for users to trigger Office reinstall
+
+echo "Starting Office reinstall process..."
+
+# Remove existing Office installation
+if [ -d "/Applications/Microsoft Word.app" ]; then
+    echo "Removing existing Office installation..."
+    rm -rf "/Applications/Microsoft Word.app"
+    rm -rf "/Applications/Microsoft Excel.app"
+    rm -rf "/Applications/Microsoft PowerPoint.app"
+    rm -rf "/Applications/Microsoft Outlook.app"
+    rm -rf "/Applications/Microsoft OneNote.app"
+    rm -rf "/Applications/Microsoft Teams.app"
+fi
+
+# Trigger Intune sync to reinstall Office
+echo "Triggering Intune sync to reinstall Office..."
+/usr/local/bin/IntuneMDMAgent update
+
+echo "Office reinstall initiated. Please wait for Intune to complete the installation."
+exit 0
+""",
+                payloadFree: true
+            )
+        ),
+        PackageTemplate(
+            name: "Script Runner",
+            icon: "terminal.fill",
+            configuration: PackageConfiguration(
+                identifier: "com.company.script.runner",
+                version: "1.0",
+                installLocation: "/tmp",
+                includePostinstall: true,
+                packageMode: .scriptExecution,
+                postinstallScript: """
+#!/bin/bash
+# Generic Script Runner Template
+# Add your custom script logic here
+
+echo "Executing custom script..."
+
+# Example: Run maintenance tasks
+# /usr/local/bin/maintenance-script.sh
+
+echo "Script execution completed."
+exit 0
+""",
+                payloadFree: true
+            )
+        ),
+        PackageTemplate(
+            name: "System Maintenance",
+            icon: "wrench.and.screwdriver.fill",
+            configuration: PackageConfiguration(
+                identifier: "com.company.maintenance",
+                version: "1.0",
+                installLocation: "/tmp",
+                includePostinstall: true,
+                packageMode: .scriptExecution,
+                postinstallScript: """
+#!/bin/bash
+# System Maintenance Script
+# Clears caches and performs basic system cleanup
+
+echo "Starting system maintenance..."
+
+# Clear user caches
+rm -rf ~/Library/Caches/*
+
+# Clear system caches (requires sudo)
+rm -rf /Library/Caches/*
+
+# Clear DNS cache
+dscacheutil -flushcache
+killall -HUP mDNSResponder
+
+# Clear font cache
+atsutil databases -remove
+
+echo "System maintenance completed."
+exit 0
+""",
+                payloadFree: true
+            )
         )
     ]
     
@@ -1186,13 +1356,14 @@ struct PackageModeSelector: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 300)
-                
+                .frame(minWidth: 400, maxWidth: 500)
+                .controlSize(.large)
+
                 // Info button
                 Button(action: { showingInfo.toggle() }) {
                     Image(systemName: "info.circle")
                         .foregroundColor(.secondaryText)
-                        .font(.footnote)
+                        .font(.body)
                 }
                 .buttonStyle(.plain)
                 .help("Learn more about package types")
