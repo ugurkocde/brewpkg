@@ -10,15 +10,15 @@
       <sparkle:version>8</sparkle:version>
       <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
       <link>https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg</link>
-      <sparkle:edSignature>fC3kIYEpnhL9/EowHfqXqSfvJeRGd6veWGnLnHM7khDLlb1AJOF7VzFfwXvtVKJ+pdQxFTdm6RuAYkAErayuDg==</sparkle:edSignature>
-      <pubDate>Tue, 30 Sep 2025 13:04:56 +0000</pubDate>
+      <sparkle:edSignature>Y0ePgGtnwy6/L6Jk1x269P87E4X4LfQoL7RFZ5H+Az+gpF5lI/Hmea03dYx6KrEnT4kGzGfZtpPpy5+HYXAqBA==</sparkle:edSignature>
+      <pubDate>Tue, 30 Sep 2025 13:13:09 +0000</pubDate>
       <enclosure 
         url="https://raw.githubusercontent.com/ugurkocde/brewpkg/main/releases/brewpkg.pkg"
         sparkle:version="8"
         sparkle:shortVersionString="1.4.0"
-        length="2105823"
+        length="2107038"
         type="application/octet-stream"
-        sparkle:edSignature="fC3kIYEpnhL9/EowHfqXqSfvJeRGd6veWGnLnHM7khDLlb1AJOF7VzFfwXvtVKJ+pdQxFTdm6RuAYkAErayuDg=="
+        sparkle:edSignature="Y0ePgGtnwy6/L6Jk1x269P87E4X4LfQoL7RFZ5H+Az+gpF5lI/Hmea03dYx6KrEnT4kGzGfZtpPpy5+HYXAqBA=="
       />
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
     </item>
